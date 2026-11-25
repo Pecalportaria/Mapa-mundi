@@ -145,8 +145,8 @@ function buildCities(gj){
       v:[Math.cos(lat*RAD)*Math.cos(lon*RAD),Math.cos(lat*RAD)*Math.sin(lon*RAD),Math.sin(lat*RAD)]})}
   arr.sort((a,b)=>a.t-b.t||(b.cap-a.cap)||b.pop-a.pop);CITIES=arr}
 function linkCapitals(){
-  const m={};for(const c of CITIES)if(c.cap){(m[c.adm]=m[c.adm]||[]).push(c);if(c.iso2)(m['#'+c.iso2]=m['#'+c.iso2]||[]).push(c)}
-  for(const c of C){const l=m[c.adm]||m[c.iso]||m['#'+c.iso2]||[];
+  const m={};for(const c of CITIES)if(c.cap){(m[c.adm]=m[c.adm]||[]).push(c);if(c.iso2&&c.iso2!=='-99')(m['#'+c.iso2]=m['#'+c.iso2]||[]).push(c)}
+  for(const c of C){const l=m[c.adm]||m[c.iso]||(c.iso2&&c.iso2!=='-99'?m['#'+c.iso2]:null)||[];
     l.sort((a,b)=>b.pop-a.pop);c.cap=[...new Set(l.slice(0,3).map(x=>x.name))].join(', ');if(l[0]){c.capObj=l[0];l[0].linked=true}}}
 function fillSearch(){const dl=$('dl');dl.textContent='';const seen=new Set();
   for(const n of [...C.map(c=>c.name),...CITIES.filter(c=>c.cap).map(c=>c.name)]){if(seen.has(n))continue;seen.add(n);const o=document.createElement('option');o.value=n;dl.appendChild(o)}}
@@ -264,7 +264,7 @@ function globe(lo){
   if(bw<=0||bh<=0)return;
   const q=Math.min(dpr,Math.sqrt((lo?130000:520000)/(bw*bh))),ow=Math.max(1,Math.round(bw*q)),oh=Math.max(1,Math.round(bh*q));
   if(!gd||gc.width!==ow||gc.height!==oh){gc.width=ow;gc.height=oh;gd=gx.createImageData(ow,oh)}
-  const tzf=Math.log2(TAU*R*q/256),onl=onlineOn&&onlineOK&&tzf>=3.2,tz=onl?Math.min(11,Math.ceil(tzf-.25)):0,TN=256*Math.pow(2,tz),kb=onl?Math.min(1,tzf-3.2):0;let lk=-1,lt=null,used=false;
+  const tzf=Math.log2(TAU*R*q/256),onl=onlineOn&&onlineOK&&navigator.onLine!==false&&tzf>=3.2,tz=onl?Math.min(11,Math.ceil(tzf-.25)):0,TN=256*Math.pow(2,tz),kb=onl?Math.min(1,tzf-3.2):0;let lk=-1,lt=null,used=false;
   const out=gd.data,sx=bw/ow,sy=bh/oh,iR=1/R,T=TEX,INV_TAU=1/TAU,INV_PI=1/Math.PI;
   const Lx=-.38,Ly=.5,Lz=.78;let o=0;
   for(let j=0;j<oh;j++){const ny=(cy-(y0+(j+.5)*sy))*iR,ny2=ny*ny;
@@ -486,7 +486,7 @@ function setMode(f){
 
 // ---- animação (só roda quando preciso)
 function req(){if(!raf)raf=requestAnimationFrame(frame)}
-function frame(t){raf=0;const dt=Math.min(50,t-last||16);last=t;let more=false;
+function frame(t){raf=0;const dt=last?Math.min(50,t-last):16;last=t;let more=false;
   if(flat){if(ff){const k=Math.min(1,(t-ff.t0)/ff.dur),e=1-Math.pow(1-k,3);mcx=ff.x0+(ff.x1-ff.x0)*e;mcy=ff.y0+(ff.y1-ff.y0)*e;S=Math.exp(Math.log(ff.s0)+(Math.log(ff.s1)-Math.log(ff.s0))*e);if(k>=1)ff=null;more=true}clampFlat();drawFlat();if(more)req();else last=0;return}
   if(fly){const k=Math.min(1,(t-fly.t0)/fly.dur),e=1-Math.pow(1-k,3);lon0=fly.l0+fly.dl*e;lat0=fly.p0+(fly.tp-fly.p0)*e;
     R=Math.exp(Math.log(fly.R0)+(Math.log(fly.tR)-Math.log(fly.R0))*e);if(k>=1)fly=null;more=true}
@@ -498,10 +498,10 @@ function frame(t){raf=0;const dt=Math.min(50,t-last||16);last=t;let more=false;
 function flyTo(tl,tp,tR){fly={t0:performance.now(),dur:700,l0:lon0,p0:lat0,R0:R,dl:((tl-lon0+540)%360)-180,tp:Math.max(-80,Math.min(80,tp)),tR};inertia=false;req()}
 function size(){W=cv.clientWidth;H=cv.clientHeight;dpr=Math.min(window.devicePixelRatio||1,1.75);cv.width=W*dpr;cv.height=H*dpr;
   cx=W/2;cy=H*.46;const old=R0;R0=Math.min(W*.46,H*.4);R=old?R*R0/old:R0;const oS=S0;S0=Math.min(W*.96/(2*HX),H*.78/(2*HY));S=oS?S*S0/oS:S0;if(flat)clampFlat()}
-const clampR=r=>Math.max(R0*.8,Math.min(R0*(onlineOn&&onlineOK?150:40),r));
+const clampR=r=>Math.max(R0*.8,Math.min(R0*(onlineOn&&onlineOK&&navigator.onLine!==false?150:40),r));
 // ---- seleção
 function pick(i,go){
-  sel=i;if(i<0){$('sh').classList.remove('v');document.body.classList.remove('sv');req();return}
+  sel=i;if(i<0){$('hint').style.display='';$('sh').classList.remove('v');document.body.classList.remove('sv');req();return}
   const c=C[i];$('n').textContent=c.name;$('cap').textContent=c.cap||'—';$('ct').textContent=c.cont;
   $('pop').textContent=c.pop?fmt(c.pop)+' hab.':'—';$('ar').textContent=c.area?fmt(Math.round(c.area))+' km²':'—';
   $('de').textContent=c.area>0&&c.pop?fmt(Math.round(c.pop/c.area*10)/10)+' hab./km²':'—';
@@ -512,18 +512,18 @@ function hit(px,py){const x=(px-cx)/R,y=(cy-py)/R,d=x*x+y*y;if(d>1)return-1;setV
   for(let k=ORDER.length-1;k>=0;k--){const c=ORDER[k];for(const r of c.rings){if(r.hole)continue;const b=r.b;if(lo<b[0]||lo>b[2]||la<b[1]||la>b[3])continue;if(inside(r,lo,la))return c.i}}
   return-1}
 // ---- gestos
-const P=new Map();let moved=0,t0=0,pd=0;
+const P=new Map();let moved=0,t0=0,pd=0,lmt=0;
 const dist=()=>{const[p,q]=[...P.values()];return Math.hypot(p.x-q.x,p.y-q.y)};
-cv.addEventListener('pointerdown',e=>{P.set(e.pointerId,{x:e.clientX,y:e.clientY});auto=false;inertia=false;fly=null;ff=null;vl=vp=0;
+cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}P.set(e.pointerId,{x:e.clientX,y:e.clientY});auto=false;inertia=false;fly=null;ff=null;vl=vp=0;
   if(P.size==1){moved=0;t0=Date.now()}else{moved=99;pd=dist()}});
 cv.addEventListener('pointermove',e=>{const p=P.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
   if(flat){if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){mcx-=dx/S;mcy+=dy/S;clampFlat();req()}}
     else if(P.size==2){const d=dist();if(pd){const[a,b]=[...P.values()];zoomFlat(d/pd,(a.x+b.x)/2,(a.y+b.y)/2)}pd=d}return}
-  if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const k=57.3/R,a=dx*k,b=dy*k;lon0-=a;lat0+=b;vl=vl*.5+a*.5;vp=vp*.5+b*.5;req()}}
+  if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const k=57.3/R,a=dx*k,b=dy*k;lon0-=a;lat0+=b;vl=vl*.5+a*.5;vp=vp*.5+b*.5;lmt=Date.now();req()}}
   else if(P.size==2){const d=dist();if(pd){R=clampR(R*d/pd);req()}pd=d}});
 cv.addEventListener('pointerup',e=>{
   if(P.size==1&&moved<=8&&Date.now()-t0<500)pick(flat?hitFlat(e.clientX,e.clientY):hit(e.clientX,e.clientY),true);
-  else if(P.size==1&&moved>8&&Math.abs(vl)+Math.abs(vp)>.3){inertia=true;req()}
+  else if(P.size==1&&moved>8&&Date.now()-lmt<80&&Math.abs(vl)+Math.abs(vp)>.3){inertia=true;req()}
   P.delete(e.pointerId);moved=99;pd=0;req()});
 cv.addEventListener('pointercancel',e=>{P.delete(e.pointerId)});
 cv.addEventListener('wheel',e=>{e.preventDefault();auto=false;if(flat){zoomFlat(e.deltaY>0?1/1.15:1.15,e.clientX,e.clientY);return}R=clampR(R*(e.deltaY>0?1/1.15:1.15));req()},{passive:false});
@@ -541,9 +541,10 @@ $('q').addEventListener('change',()=>{const v=norm($('q').value.trim());if(!v)re
   if(j>=0){auto=false;pick(-1);if(flat)flyFlat(CITIES[j].lon,CITIES[j].lat,S0*12);else flyTo(CITIES[j].lon,CITIES[j].lat,clampR(R0*12));$('q').blur()}});
 $('x').onclick=()=>{pick(-1)};
 addEventListener('resize',()=>{size();req()});
+addEventListener('online',()=>req());addEventListener('offline',()=>{if(!flat)R=clampR(R);req()});
 size();req();
 // ---- inicialização: textura embutida + dados locais (em paralelo)
-const texP=new Promise(ok=>{PHOTO.onload=()=>runGen(genTex(),ok);PHOTO.src='data:image/jpeg;base64,'+PB64});
+const texP=new Promise(ok=>{PHOTO.onerror=()=>{$('ld').textContent='Falha ao carregar a imagem do globo'};PHOTO.onload=()=>runGen(genTex(),ok);PHOTO.src='data:image/jpeg;base64,'+PB64});
 const dataP=Promise.allSettled([getJSON(FILES_C),getJSON(FILES_P)]).then(([a,b])=>{
   if(a.status==='fulfilled'){try{buildCountries(a.value)}catch(e){console.error(e)}}
   if(b.status==='fulfilled'){try{buildCities(b.value)}catch(e){console.error(e)}}
