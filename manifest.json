@@ -1,0 +1,16 @@
+{
+  "name": "Atlas Globo · Satélite",
+  "short_name": "Atlas Globo",
+  "description": "Globo 3D com imagem de satélite NASA Blue Marble, países e cidades. Funciona offline.",
+  "lang": "pt-BR",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#070d18",
+  "theme_color": "#070d18",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
