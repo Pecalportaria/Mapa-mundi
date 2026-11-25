@@ -16,7 +16,9 @@ html,body{height:100%;margin:0;background:#02050b;color:var(--ink);font-family:"
 #q{flex:1;min-width:0;background:#fffffff0;color:#12303f;border:1px solid #5aa3c6;border-radius:10px;padding:10px 12px;font:inherit;font-size:16px}
 #q:focus{outline:2px solid var(--gold)}
 canvas{position:absolute;inset:0;width:100%;height:100%;touch-action:none;display:block}
-#z{position:fixed;right:12px;top:50%;transform:translateY(-50%);z-index:5;display:flex;flex-direction:column;gap:8px}
+#z{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 14px);z-index:5;display:flex;flex-direction:row;gap:8px;transition:bottom .25s}
+body.sv #z{bottom:calc(var(--shh,0px) + 14px)}
+#at{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 1px);text-align:center;color:#9fc4da;font-size:9px;pointer-events:none;display:none;z-index:5}
 button{width:44px;height:44px;border-radius:12px;border:1px solid #5aa3c6;background:#fffffff0;color:#12303f;font-size:22px;font-family:inherit}
 button:focus-visible{outline:2px solid var(--gold)}
 button.on{background:var(--gold);border-color:#c79a00}
@@ -29,20 +31,21 @@ button.on{background:var(--gold);border-color:#c79a00}
 #sh h2{margin:0 0 10px;font-size:26px;font-weight:600}
 #sh dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0}
 #sh dt{color:var(--mut)}#sh dd{margin:0}
-#hint{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);text-align:center;color:#9fc4da;font-size:14px;pointer-events:none}
+#hint{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);text-align:center;color:#9fc4da;font-size:14px;pointer-events:none}
 </style>
 </head>
 <body>
 <div id="top"><input id="q" list="dl" placeholder="Buscar país ou capital…" autocomplete="off"><datalist id="dl"></datalist></div>
 <canvas id="m" aria-label="Globo terrestre"></canvas>
-<div id="z"><button id="zi" aria-label="Aproximar">+</button><button id="zo" aria-label="Afastar">−</button><button id="zr" aria-label="Globo inteiro">⌂</button><button id="zb" class="on" aria-label="Fronteiras" aria-pressed="true">▦</button></div>
+<div id="z"><button id="zi" aria-label="Aproximar">+</button><button id="zo" aria-label="Afastar">−</button><button id="zr" aria-label="Globo inteiro">⌂</button><button id="zb" class="on" aria-label="Fronteiras" aria-pressed="true">▦</button><button id="zs" class="on" aria-label="Satélite online" aria-pressed="true">🛰</button><button id="zm" aria-label="Planisfério político">🗺</button></div>
+<div id="at">Imagens: Esri, Maxar, Earthstar Geographics</div>
 <div id="ld">Carregando imagem de satélite…</div>
 <div id="hint">Arraste para girar · pince para zoom · toque num país</div>
 <div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd></dl></div>
 <script>
 // Atlas Globo · Satélite — globo 3D (Canvas 2D) com textura NASA Blue Marble embutida.
 // Dados lidos offline de arquivos locais: países (Natural Earth 50m) e cidades (populated places 50m).
-const FILES_C=['ne_50m_admin_0_countries.json','ne_50m_admin_0_countries.geojson','Países.json','Paises.json','paises.json'];
+const FILES_C=['Paises.json','Países.json','paises.json','ne_10m_admin_0_countries.json','ne_10m_admin_0_countries.geojson','ne_50m_admin_0_countries.json','ne_50m_admin_0_countries.geojson','Países.json','Paises.json','paises.json'];
 const FILES_P=['ne_50m_populated_places.geojson','ne_50m_populated_places.json','Cidades.geojson','cidades.geojson','Cidades.json'];
 const CONT={'Africa':'África','Asia':'Ásia','Europe':'Europa','North America':'América do Norte','South America':'América do Sul','Oceania':'Oceania','Antarctica':'Antártida','Seven seas (open ocean)':'Ilhas oceânicas'};
 // nomes dos países em português (o arquivo só traz inglês), pela sigla ADM0_A3
@@ -122,7 +125,7 @@ function buildCountries(gj){
     let lx=num(g('label_x')),ly=num(g('label_y'));if(isNaN(lx)||isNaN(ly)){lx=ctr[0];ly=ctr[1]}
     const mn=num(g('min_label')),ml=isNaN(mn)?4:Math.max(1.3,Math.min(6.4,mn-1.5));
     const name=g('name_pt')||PT[g('adm0_a3')]||g('name')||g('admin')||'?';
-    out.push({i:out.length,name,adm:g('adm0_a3')||'',iso:g('iso_a3')||'',iso2:g('iso_a2')||'',admin:g('admin')||'',
+    out.push({i:out.length,name,adm:g('adm0_a3')||'',iso:g('iso_a3')||'',iso2:g('iso_a2')||'',admin:g('admin')||'',mc:num(g('mapcolor9')),lx,ly,
       cont:CONT[g('continent')]||g('continent')||'—',pop:num(g('pop_est'))||0,area:Math.max(0,area),cap:'',
       rings,ml,f:ml<=2?13:ml<=3.5?12:11.5,capObj:null,
       lv:[Math.cos(ly*RAD)*Math.cos(lx*RAD),Math.cos(ly*RAD)*Math.sin(lx*RAD),Math.sin(ly*RAD)],
@@ -157,13 +160,41 @@ function inside(r,x,y){let c=false;const lo=r.lo,la=r.la;for(let i=0,j=lo.length
   if((la[i]>y)!==(la[j]>y)&&x<(lo[j]-lo[i])*(y-la[i])/(la[j]-la[i])+lo[i])c=!c}return c}
 const ang=(x,y)=>Math.atan2(-y,x);
 // o anel pode aparecer no hemisfério visível? (esfera envolvente)
-const vis=r=>cp*cl*r.vx+cp*sl*r.vy+sp*r.vz>-Math.sin(Math.min(r.rad,1.5707));
+let VA=Math.PI/2;   // raio angular da região visível na tela (π/2 = hemisfério inteiro)
+const vis=r=>cp*cl*r.vx+cp*sl*r.vy+sp*r.vz>Math.cos(Math.min(Math.PI,VA+r.rad));
+// ---- nível de detalhe: Douglas-Peucker em lon/lat, tolerância ≈ 0,5 px na tela (calculado sob demanda e guardado)
+function simpKeep(lo,la,tol,kx,cap){const n=lo.length,keep=new Uint8Array(n);keep[0]=keep[n-1]=1;const st=[0,n-1];
+  while(st.length){const b=st.pop(),a=st.pop();if(b-a<2)continue;
+    const ax=lo[a]*kx,ay=la[a],dx=lo[b]*kx-ax,dy=la[b]-ay,L=dx*dx+dy*dy;let dm=0,im=-1;
+    for(let i=a+1;i<b;i++){const px=lo[i]*kx-ax,py=la[i]-ay;let d;
+      if(L===0)d=Math.hypot(px,py);else{let t=(px*dx+py*dy)/L;t=t<0?0:t>1?1:t;d=Math.hypot(px-t*dx,py-t*dy)}
+      if(d>dm){dm=d;im=i}}
+    const span=Math.max(Math.abs(dx),Math.abs(dy));
+    if(im>0&&(dm>tol||span>cap)){keep[im]=1;st.push(a,im,im,b)}}
+  return keep}
+function buildLevel(r,tol){
+  const lo=r.lo,la=r.la,n0=lo.length,kx=Math.max(.05,Math.cos(Math.asin(Math.max(-1,Math.min(1,r.vz)))));
+  const keep=simpKeep(lo,la,tol,kx,Math.min(2,tol*50+.05)),idx=[];for(let i=0;i<n0;i++)if(keep[i])idx.push(i);
+  if(idx.length<3){idx.push(n0>>1);idx.sort((p,q)=>p-q);if(new Set(idx).size<3)return{P:r.P,n:r.n}}
+  const m=idx.length,v=new Float32Array(m*3);
+  for(let k=0;k<m;k++){const x=lo[idx[k]],y=la[idx[k]],c=Math.cos(y*RAD);v[3*k]=c*Math.cos(x*RAD);v[3*k+1]=c*Math.sin(x*RAD);v[3*k+2]=Math.sin(y*RAD)}
+  const out=[];
+  for(let k=0;k<m;k++){const a=k*3,q=((k+1)%m)*3;out.push(v[a],v[a+1],v[a+2]);
+    const d=Math.acos(Math.min(1,v[a]*v[q]+v[a+1]*v[q+1]+v[a+2]*v[q+2]));
+    if(d>.05){const mm=Math.ceil(d/.05),sd=Math.sin(d);for(let i=1;i<mm;i++){const t=i/mm,w1=Math.sin((1-t)*d)/sd,w2=Math.sin(t*d)/sd;
+      out.push(w1*v[a]+w2*v[q],w1*v[a+1]+w2*v[q+1],w1*v[a+2]+w2*v[q+2])}}}
+  const P=Float32Array.from(out);return{P,n:P.length/3}}
+function lvP(r){
+  if(r.lo.length<120)return r;
+  const td=.5/(R*RAD);if(td<=.004)return r;
+  const lv=Math.min(9,Math.ceil(Math.log2(td/.004)));
+  const L=r.L||(r.L={});return L[lv]||(L[lv]=buildLevel(r,.004*Math.pow(2,lv)))}
 function arcTo(a1,a2,r){const d=((a2-a1)%TAU+TAU)%TAU,m=a1+d/2,x=Math.cos(m)*.995,y=-Math.sin(m)*.995,z=Math.sqrt(Math.max(0,1-x*x-y*y));
   const[lo,la]=unproj(x,y,z);ctx.arc(cx,cy,R,a1,a2,!inside(r,lo,la))}
 // adiciona um anel ao caminho atual, recortando no horizonte do globo
 function addRing(r){
   if(!vis(r))return;
-  const n=r.n;rot(r.P,n);let nv=0;for(let i=0;i<n;i++)if(TZ[i]>0)nv++;
+  const q_=lvP(r),n=q_.n;rot(q_.P,n);let nv=0;for(let i=0;i<n;i++)if(TZ[i]>0)nv++;
   if(nv===0)return;
   if(nv===n){ctx.moveTo(cx+R*TX[0],cy-R*TY[0]);for(let i=1;i<n;i++)ctx.lineTo(cx+R*TX[i],cy-R*TY[i]);ctx.closePath();return}
   const seq=[];
@@ -202,23 +233,56 @@ const PHOTO=new Image(),PB64='/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAUEBAQEAwUEBAQGBQ
 
 // ---- globo: amostra a textura por pixel (projeção ortográfica inversa) + sombreado e atmosfera
 const gc=document.createElement('canvas'),gx=gc.getContext('2d');let gd=null;
+// ---- satélite online: ladrilhos Esri World Imagery (Web Mercator) amostrados por pixel quando o zoom pede mais detalhe
+const TURL='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/';
+const TILES=new Map(),TQ=[];let tAct=0,onlineOK=true,onlineOn=true,tRedraw=0,TR=0,TG=0,TB=0,tcv=null,tcx=null;
+try{onlineOn=localStorage.getItem('atlas-online')!=='0'}catch(e){}
+function wantTile(z,x,y,key){const t={s:0};TILES.set(key,t);TQ.push([z,x,y,key]);
+  if(TQ.length>48){const o=TQ.shift();TILES.delete(o[3])}pumpT();return t}
+function pumpT(){while(tAct<6&&TQ.length){const q=TQ.pop();tAct++;loadT(q[0],q[1],q[2],q[3])}}
+function tileDone(){if(!tRedraw)tRedraw=setTimeout(()=>{tRedraw=0;req()},120)}
+function loadT(z,x,y,key){const im=new Image();im.crossOrigin='anonymous';
+  const fin=ok=>{tAct--;if(!ok){const t=TILES.get(key);if(t)t.f=1;setTimeout(()=>{TILES.delete(key);},8000)}pumpT()};
+  im.onload=()=>{try{
+    const c=tcv||(tcv=document.createElement('canvas'));c.width=c.height=256;const x2=tcx||(tcx=c.getContext('2d',{willReadFrequently:true}));
+    x2.drawImage(im,0,0,256,256);const d=x2.getImageData(0,0,256,256).data;
+    // mesmo clareamento do oceano da textura base, para as duas imagens combinarem
+    for(let p=0;p<d.length;p+=4){const r=d[p],g=d[p+1],b=d[p+2],w=cl01((b-r-8)/36)*cl01((b*1.15-g+4)/14);
+      if(w>0){const k=cl01((b-45)/95),m=w*.92;d[p]=r+(26+52*k-r)*m;d[p+1]=g+(92+92*k-g)*m;d[p+2]=b+(168+48*k-b)*m}}
+    TILES.set(key,{d});
+    if(TILES.size>200){let n=0;for(const[k,t]of TILES){if(t.d){TILES.delete(k);if(++n>=50)break}}}
+    fin(true);tileDone()}catch(e){onlineOK=false;fin(false)}};
+  im.onerror=()=>fin(false);
+  im.src=TURL+z+'/'+y+'/'+x}
+function smp(D,fx,fy){let gx=fx-.5,gy=fy-.5,x0=Math.floor(gx),y0=Math.floor(gy);const ax=gx-x0,ay=gy-y0;
+  let x1=x0+1,y1=y0+1;x0=x0<0?0:x0>255?255:x0;y0=y0<0?0:y0>255?255:y0;x1=x1>255?255:x1;y1=y1>255?255:y1;
+  const a=(y0*256+x0)*4,b=(y0*256+x1)*4,c=(y1*256+x0)*4,e=(y1*256+x1)*4,w00=(1-ax)*(1-ay),w10=ax*(1-ay),w01=(1-ax)*ay,w11=ax*ay;
+  TR=D[a]*w00+D[b]*w10+D[c]*w01+D[e]*w11;TG=D[a+1]*w00+D[b+1]*w10+D[c+1]*w01+D[e+1]*w11;TB=D[a+2]*w00+D[b+2]*w10+D[c+2]*w01+D[e+2]*w11}
+
 function globe(lo){
   const x0=Math.max(0,Math.floor(cx-R)),x1=Math.min(W,Math.ceil(cx+R)),y0=Math.max(0,Math.floor(cy-R)),y1=Math.min(H,Math.ceil(cy+R)),bw=x1-x0,bh=y1-y0;
   if(bw<=0||bh<=0)return;
   const q=Math.min(dpr,Math.sqrt((lo?130000:520000)/(bw*bh))),ow=Math.max(1,Math.round(bw*q)),oh=Math.max(1,Math.round(bh*q));
   if(!gd||gc.width!==ow||gc.height!==oh){gc.width=ow;gc.height=oh;gd=gx.createImageData(ow,oh)}
+  const tzf=Math.log2(TAU*R*q/256),onl=onlineOn&&onlineOK&&tzf>=3.2,tz=onl?Math.min(11,Math.ceil(tzf-.25)):0,TN=256*Math.pow(2,tz),kb=onl?Math.min(1,tzf-3.2):0;let lk=-1,lt=null,used=false;
   const out=gd.data,sx=bw/ow,sy=bh/oh,iR=1/R,T=TEX,INV_TAU=1/TAU,INV_PI=1/Math.PI;
   const Lx=-.38,Ly=.5,Lz=.78;let o=0;
   for(let j=0;j<oh;j++){const ny=(cy-(y0+(j+.5)*sy))*iR,ny2=ny*ny;
     for(let i=0;i<ow;i++,o+=4){const nx=(x0+(i+.5)*sx-cx)*iR,d=nx*nx+ny2;
       if(d>=1){out[o+3]=0;continue}
       const nz=Math.sqrt(1-d),X=-sl*nx-sp*cl*ny+cp*cl*nz,Y=cl*nx-sp*sl*ny+cp*sl*nz,Z=cp*ny+sp*nz;
-      const u=(Math.atan2(Y,X)*INV_TAU+.5)*TW-.5,v=(.5-Math.asin(Z>1?1:Z<-1?-1:Z)*INV_PI)*TH-.5;
+      const ln=Math.atan2(Y,X),u=(ln*INV_TAU+.5)*TW-.5,v=(.5-Math.asin(Z>1?1:Z<-1?-1:Z)*INV_PI)*TH-.5;
       let u0=Math.floor(u),v0=Math.floor(v);const fu=u-u0,fv=v-v0;u0=((u0%TW)+TW)%TW;let u1=u0+1;if(u1>=TW)u1=0;
       let v1=v0+1;v0=v0<0?0:v0>=TH?TH-1:v0;v1=v1<0?0:v1>=TH?TH-1:v1;
       const w00=(1-fu)*(1-fv),w10=fu*(1-fv),w01=(1-fu)*fv,w11=fu*fv,a=(v0*TW+u0),b=(v0*TW+u1),c=(v1*TW+u0),e=(v1*TW+u1),a4=a*4,b4=b*4,c4=c*4,e4=e*4;
       let r=T[a4]*w00+T[b4]*w10+T[c4]*w01+T[e4]*w11,g=T[a4+1]*w00+T[b4+1]*w10+T[c4+1]*w01+T[e4+1]*w11,bl=T[a4+2]*w00+T[b4+2]*w10+T[c4+2]*w01+T[e4+2]*w11;
       const oc=(T[a4+3]*w00+T[b4+3]*w10+T[c4+3]*w01+T[e4+3]*w11)/255;
+      if(kb>0&&Z<.9962&&Z>-.9962){
+        const xp=(ln*INV_TAU+.5)*TN,yp=(.5-.5*Math.log((1+Z)/(1-Z))*INV_TAU)*TN,tx=(xp/256)|0,ty=(yp/256)|0,key=(tz*2048+tx)*2048+ty;
+        let t;if(key===lk)t=lt;else{t=TILES.get(key);if(t===undefined)t=wantTile(tz,tx,ty,key);lk=key;lt=t}
+        if(t.d){smp(t.d,xp-tx*256,yp-ty*256);r+=(TR-r)*kb;g+=(TG-g)*kb;bl+=(TB-bl)*kb;used=true}
+        else{for(let k=1;k<=3&&tz-k>=0;k++){const pxp=xp/(1<<k),pyp=yp/(1<<k),ptx=(pxp/256)|0,pty=(pyp/256)|0,pt=TILES.get(((tz-k)*2048+ptx)*2048+pty);
+          if(pt&&pt.d){smp(pt.d,pxp-ptx*256,pyp-pty*256);r+=(TR-r)*kb;g+=(TG-g)*kb;bl+=(TB-bl)*kb;used=true;break}}}}
       const lam=nx*Lx+ny*Ly+nz*Lz;let sh=.74+.44*(lam>0?lam:0)+.06*nz;
       // brilho do sol na água
       const rl=2*nz*nx*Lx+2*nz*ny*Ly+(2*nz*nz-1)*Lz;let sp_=0;if(rl>.8&&oc>.01){sp_=Math.pow(rl,60)*70*oc}
@@ -226,17 +290,17 @@ function globe(lo){
       // névoa atmosférica no limbo
       const rim=1-nz,k=rim*rim*rim*rim*.7;r+=(110-r)*k;g+=(170-g)*k;bl+=(255-bl)*k;
       out[o]=r;out[o+1]=g;out[o+2]=bl;out[o+3]=255}}
-  gx.putImageData(gd,0,0);
+  gx.putImageData(gd,0,0);$('at').style.display=used?'block':'none';
   ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.clip();ctx.imageSmoothingEnabled=true;ctx.drawImage(gc,x0,y0,bw,bh);ctx.restore();
 }
 // contorno só do que está visível (sem riscar o limbo); pula anéis minúsculos e pontos a <0,7px
-function lineRing(r){if(r.rad*R<.7||!vis(r))return;const n=r.n;rot(r.P,n);let pen=false,lx=0,ly=0;
+function lineRing(r){if(r.rad*R<.7||!vis(r))return;const q_=lvP(r),n=q_.n;rot(q_.P,n);let pen=false,lx=0,ly=0;
   for(let i=0;i<n;i++){if(TZ[i]>.02){const px=cx+R*TX[i],py=cy-R*TY[i];
     if(pen){if(Math.abs(px-lx)+Math.abs(py-ly)<.7)continue;ctx.lineTo(px,py)}else{ctx.moveTo(px,py);pen=true}lx=px;ly=py}else pen=false}
   if(pen&&TZ[0]>.02)ctx.lineTo(cx+R*TX[0],cy-R*TY[0])}
 // ---- desenho
 function draw(lo){
-  setView();ctx.setTransform(dpr,0,0,dpr,0,0);
+  setView();{const dm=Math.hypot(Math.max(cx,W-cx),Math.max(cy,H-cy));VA=dm>=R?Math.PI/2:Math.asin(dm/R)}ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.fillStyle='#02050b';ctx.fillRect(0,0,W,H);
   for(const s of STARS){ctx.fillStyle=`rgba(255,255,255,${s[2]})`;ctx.fillRect(s[0]*W,s[1]*H,s[3],s[3])}
   let g=ctx.createRadialGradient(cx,cy,R*.97,cx,cy,R*1.18);g.addColorStop(0,'rgba(110,170,255,.55)');g.addColorStop(1,'rgba(110,170,255,0)');
@@ -290,9 +354,139 @@ function labels(){
   ctx.globalAlpha=1;
 }
 
+// ================= PLANISFÉRIO POLÍTICO (projeção de Robinson, como no mapa do IBGE) =================
+let flat=false,S=0,S0=0,mcx=0,mcy=0,ff=null,flatInit=false,OLP=null,GRM=null;
+const RB=[[1,0],[.9986,.062],[.9954,.124],[.99,.186],[.9822,.248],[.973,.31],[.96,.372],[.9427,.434],[.9216,.4958],[.8962,.5571],[.8679,.6176],[.835,.6769],[.7986,.7346],[.7597,.7903],[.7186,.8435],[.6732,.8936],[.6213,.9394],[.5722,.9761],[.5322,1]];
+const RBK=.8487*RAD,RBY=1.3523,HX=Math.PI*.8487,HY=1.3523;
+function rbc(la,c){const a=Math.min(90,Math.abs(la))/5,i=Math.min(17,Math.floor(a)),f=a-i;
+  const g=k=>k<0?(c?-RB[-k][c]:RB[-k][c]):RB[k>18?18:k][c];
+  const p0=g(i-1),p1=g(i),p2=g(i+1),p3=g(i+2);
+  return .5*(2*p1+(-p0+p2)*f+(2*p0-5*p1+4*p2-p3)*f*f+(-p0+3*p1-3*p2+p3)*f*f*f)}
+const ry=la=>rbc(la,1)*RBY*(la<0?-1:1),rxe=la=>rbc(la,0)*HX;
+function rb(lo,la){return[rbc(la,0)*lo*RBK,ry(la)]}
+function rbInv(x,y){const ay=Math.abs(y)/RBY;if(ay>1)return null;let a=0,b=90;
+  for(let k=0;k<22;k++){const m=(a+b)/2;if(rbc(m,1)<ay)a=m;else b=m}
+  const la=(a+b)/2,lo=x/(rbc(la,0)*RBK);return Math.abs(lo)>180?null:[lo,y<0?-la:la]}
+const PAL=['#f4e24f','#a3cf44','#f5a65a','#f3a8c8','#b69bd3','#ef7f7f','#fff5ae','#8fd2c6','#e8c9a3'];
+function colF(c){if(c.adm==='ATA')return'#fdf6c0';let m=c.mc;
+  if(!(m>=1)){let h=0;for(const ch of String(c.adm))h=(h*31+ch.charCodeAt(0))%9;m=h+1}return PAL[(Math.round(m)-1)%9]}
+function initFlat(){flatInit=true;OLP=[];
+  for(let la=90;la>=-90;la-=3)OLP.push(rb(180,la));for(let la=-90;la<=90;la+=3)OLP.push(rb(-180,la));
+  GRM=[];for(let lo=-165;lo<=165;lo+=15){const m=[];for(let la=-90;la<=90;la+=3){const p=rb(lo,la);m.push(p[0],p[1])}GRM.push(m)}}
+const clampS=s=>Math.max(S0,Math.min(S0*80,s));
+function clampFlat(){
+  let lo=-HX+cx/S,hi=HX-(W-cx)/S;mcx=lo>hi?0:Math.max(lo,Math.min(hi,mcx));
+  lo=-HY+(H-cy-90)/S;hi=HY-cy/S+60/S;mcy=lo>hi?(lo+hi)/2:Math.max(lo,Math.min(hi,mcy))}
+function zoomFlat(f,px,py){if(px===undefined){px=cx;py=cy}
+  const wx=mcx+(px-cx)/S,wy=mcy-(py-cy)/S;S=clampS(S*f);mcx=wx-(px-cx)/S;mcy=wy+(py-cy)/S;clampFlat();req()}
+function flyFlat(lon,lat,tS){const p=rb(lon,lat);ff={t0:performance.now(),dur:700,x0:mcx,y0:mcy,s0:S,x1:p[0],y1:p[1],s1:clampS(tS)};req()}
+const fitS=c=>.5*Math.min(W,H*.62)/(Math.max(c.bw,c.bh,1)*.0165);
+function bboxFlat(r){const b=r.b,a0=b[1],a1=b[3],near=(a0<=0&&a1>=0)?0:Math.min(Math.abs(a0),Math.abs(a1)),far=Math.max(Math.abs(a0),Math.abs(a1)),
+  Xn=rbc(near,0),Xf=rbc(far,0),xs=[b[0]*RBK*Xn,b[0]*RBK*Xf,b[2]*RBK*Xn,b[2]*RBK*Xf];
+  return[Math.min(...xs),ry(a0),Math.max(...xs),ry(a1)]}
+// nível de detalhe do anel no planisfério (0,5 px de tolerância), calculado sob demanda e guardado
+function lvF(r){
+  const td=.5/(S*.016),L=r.F||(r.F={});let lv=0;
+  if(r.lo.length>=120&&td>.004)lv=Math.min(9,Math.ceil(Math.log2(td/.004)));
+  if(L[lv])return L[lv];
+  const lo=r.lo,la=r.la,n0=lo.length;let idx=null;
+  if(lv>0){const tol=.004*Math.pow(2,lv),keep=simpKeep(lo,la,tol,1,Math.min(2,tol*50+.05));idx=[];
+    for(let i=0;i<n0;i++)if(keep[i])idx.push(i);if(idx.length<3){idx.push(n0>>1);idx.sort((p,q)=>p-q)}}
+  const n=idx?idx.length:n0,M=new Float32Array(n*2);
+  for(let k=0;k<n;k++){const i=idx?idx[k]:k,p=rb(lo[i],la[i]);M[2*k]=p[0];M[2*k+1]=p[1]}
+  return L[lv]={M,n}}
+function addFlat(p,r){
+  const fb=r.fb||(r.fb=bboxFlat(r)),x0=cx+(fb[0]-mcx)*S,x1=cx+(fb[2]-mcx)*S,y0=cy-(fb[3]-mcy)*S,y1=cy-(fb[1]-mcy)*S;
+  if(x1<0||x0>W||y1<0||y0>H||(x1-x0<.6&&y1-y0<.6))return false;
+  const q=lvF(r),M=q.M,n=q.n;let lx=0,ly=0;
+  for(let i=0;i<n;i++){const px=cx+(M[2*i]-mcx)*S,py=cy-(M[2*i+1]-mcy)*S;
+    if(i===0)p.moveTo(px,py);else{if(i<n-1&&Math.abs(px-lx)+Math.abs(py-ly)<.5)continue;p.lineTo(px,py)}lx=px;ly=py}
+  p.closePath();return true}
+function hitLL(lo,la){
+  for(let k=ORDER.length-1;k>=0;k--){const c=ORDER[k];for(const r of c.rings){if(r.hole)continue;const b=r.b;if(lo<b[0]||lo>b[2]||la<b[1]||la>b[3])continue;if(inside(r,lo,la))return c.i}}
+  return-1}
+function hitFlat(px,py){const p=rbInv(mcx+(px-cx)/S,mcy-(py-cy)/S);return p?hitLL(p[0],p[1]):-1}
+function drawFlat(){
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#0b1626';ctx.fillRect(0,0,W,H);ctx.lineJoin='round';
+  const SX=x=>cx+(x-mcx)*S,SY=y=>cy-(y-mcy)*S;
+  const op=new Path2D();OLP.forEach((p,i)=>{const X=SX(p[0]),Y=SY(p[1]);i?op.lineTo(X,Y):op.moveTo(X,Y)});op.closePath();
+  ctx.save();ctx.clip(op);ctx.fillStyle='#d6e9f7';ctx.fillRect(0,0,W,H);
+  const ps=[];
+  if(ready||C.length)for(const c of C){const p=new Path2D();let ok=false;for(const r of c.rings)if(addFlat(p,r))ok=true;
+    if(!ok)continue;ctx.fillStyle=colF(c);ctx.fill(p,'evenodd');ps.push(p)}
+  if(bordersOn){ctx.strokeStyle='#4e6b82';ctx.lineWidth=.7;for(const p of ps)ctx.stroke(p)}
+  // meridianos e paralelos de 15° em 15° (tracejados: Equador, trópicos e círculos polares)
+  ctx.strokeStyle='rgba(30,130,210,.7)';ctx.lineWidth=.6;ctx.beginPath();
+  for(const m of GRM)for(let k=0;k<m.length;k+=2){const X=SX(m[k]),Y=SY(m[k+1]);k?ctx.lineTo(X,Y):ctx.moveTo(X,Y)}
+  for(const la of [-75,-60,-45,-30,-15,15,30,45,60,75]){const y=SY(ry(la));ctx.moveTo(SX(-rxe(la)),y);ctx.lineTo(SX(rxe(la)),y)}
+  ctx.stroke();
+  ctx.setLineDash([7,4]);ctx.beginPath();
+  for(const la of [0,23.4366,-23.4366,66.5634,-66.5634]){const y=SY(ry(la));ctx.moveTo(SX(-rxe(la)),y);ctx.lineTo(SX(rxe(la)),y)}
+  ctx.stroke();ctx.setLineDash([]);
+  if(sel>=0&&C[sel]){const c=C[sel],p=new Path2D();for(const r of c.rings)addFlat(p,r);
+    ctx.fillStyle='rgba(255,210,63,.45)';ctx.fill(p,'evenodd');ctx.strokeStyle='#c98a00';ctx.lineWidth=1.8;ctx.stroke(p)}
+  ctx.restore();
+  ctx.strokeStyle='#3b7ea8';ctx.lineWidth=1.2;ctx.stroke(op);
+  labelsFlat()}
+function labelsFlat(){
+  const zl=Math.log2(S/S0)+1.45,pl=[],ks=Math.min(1,.7+.3*Math.max(0,zl-1.5)/1.2);
+  const hit_=(x0,y0,x1,y1)=>{for(const p of pl)if(x0<p[2]&&x1>p[0]&&y0<p[3]&&y1>p[1])return true;pl.push([x0,y0,x1,y1]);return false};
+  const SX=x=>cx+(x-mcx)*S,SY=y=>cy-(y-mcy)*S,ls=v=>{if('letterSpacing' in ctx)ctx.letterSpacing=v};
+  ctx.textBaseline='middle';ctx.lineJoin='round';ctx.globalAlpha=1;
+  // graus nas bordas
+  ctx.font='9px Arial,Helvetica,sans-serif';ctx.fillStyle='#1b6aa3';ctx.textAlign='left';
+  for(const la of [-75,-60,-45,-30,-15,0,15,30,45,60,75]){const y=SY(ry(la)),x=SX(-rxe(la))+3;if(y<0||y>H||x>W||x<-60)continue;
+    ctx.fillText(la===0?'0º':Math.abs(la)+'º '+(la<0?'S':'N'),x,y-5)}
+  const step=zl<2?60:zl<3.1?30:15;ctx.textAlign='center';
+  for(let lo=-180+step;lo<180;lo+=step){const xx=SX(lo*RBK*.5322);if(xx<0||xx>W)continue;
+    const t=lo===0?'0º':Math.abs(lo)+'º '+(lo<0?'O':'E'),yt=SY(HY)-7,yb=SY(-HY)+8;
+    if(yt>0&&yt<H)ctx.fillText(t,xx,yt);if(yb>0&&yb<H)ctx.fillText(t,xx,yb)}
+  if(zl>=2.6){ctx.font='italic 8.5px Arial,Helvetica,sans-serif';ctx.fillStyle='#2a77a8';ctx.textAlign='left';
+    for(const[la,t]of [[0,'LINHA DO EQUADOR'],[23.4366,'TRÓPICO DE CÂNCER'],[-23.4366,'TRÓPICO DE CAPRICÓRNIO'],[66.5634,'CÍRCULO POLAR ÁRTICO'],[-66.5634,'CÍRCULO POLAR ANTÁRTICO']]){
+      const y=SY(ry(la)),x=SX(-rxe(la))+48;if(y<0||y>H||x>W)continue;ctx.fillText(t,x,y-5)}}
+  // nomes dos países (maiúsculas, como no mapa do IBGE); os pequenos só aparecem com zoom
+  ctx.textAlign='center';
+  const arr=sel>=0&&C[sel]?[C[sel],...LBS]:LBS;
+  for(const c of arr){if(c.i!==sel&&zl<c.ml)continue;
+    if(c.fx===undefined){const p=rb(c.lx,c.ly);c.fx=p[0];c.fy=p[1]}
+    const px=SX(c.fx),py=SY(c.fy);if(px<-40||px>W+40||py<-10||py>H+10)continue;
+    const t=c.name.toUpperCase(),f=c.f*.88*ks,w=t.length*.64*f,h=f*1.2;
+    if(c.i!==sel&&(px-w/2<2||px+w/2>W-2))continue;
+    if(hit_(px-w/2,py-h/2,px+w/2,py+h/2))continue;
+    ctx.font='600 '+f+'px Arial,Helvetica,sans-serif';ls('.4px');ctx.lineWidth=2.6;ctx.strokeStyle='rgba(255,255,255,.65)';
+    ctx.strokeText(t,px,py);ctx.fillStyle=c.i===sel?'#6b3f00':'#1d2a34';ctx.fillText(t,px,py)}
+  ls('0px');
+  const cities=capOnly=>{ctx.textAlign='left';
+    for(const c of CITIES){if(zl<c.t)break;if(capOnly!==c.cap)continue;
+      if(c.fx===undefined){const p=rb(c.lon,c.lat);c.fx=p[0];c.fy=p[1]}
+      const px=SX(c.fx),py=SY(c.fy);if(px<-20||px>W+20||py<-10||py>H+10)continue;
+      const f=(c.cap?10:9.5)*Math.max(ks,.85),w=c.name.length*.56*f;if(hit_(px-4,py-f*.6,px+8+w,py+f*.6))continue;
+      ctx.beginPath();ctx.arc(px,py,c.cap?3:2.2,0,TAU);ctx.fillStyle=c.cap?'#c0392b':'#1d2a34';ctx.fill();ctx.lineWidth=1;ctx.strokeStyle='#fff';ctx.stroke();
+      ctx.font=(c.cap?'600 ':'')+f+'px Arial,Helvetica,sans-serif';ctx.lineWidth=2.6;ctx.strokeStyle='rgba(255,255,255,.75)';
+      ctx.strokeText(c.name,px+6,py);ctx.fillStyle='#1d2a34';ctx.fillText(c.name,px+6,py)}};
+  cities(true);
+  // oceanos e mares em azul itálico, com letras espaçadas
+  ctx.textAlign='center';
+  for(const s of SEAS){if(zl<s[3]||zl>s[4])continue;
+    if(s.fx===undefined){const p=rb(s[1],s[2]);s.fx=p[0];s.fy=p[1]}
+    const px=SX(s.fx),py=SY(s.fy);if(px<-60||px>W+60||py<-20||py>H+20)continue;
+    const L=s[0].split('\n'),f=(s[5]?11.5:9.5)*ks,lh=f*1.2,w=Math.max(...L.map(t=>t.length))*(.64*f+(s[5]?2.5*ks:1)),h=lh*L.length;
+    if(hit_(px-w/2,py-h/2,px+w/2,py+h/2))continue;
+    ctx.font='italic '+f+'px Arial,Helvetica,sans-serif';ls(s[5]?(2.5*ks)+'px':'1px');ctx.fillStyle=s[5]?'#2f78ad':'#3a86b8';
+    L.forEach((t,i)=>ctx.fillText(s[5]?t.toUpperCase():t,px,py+(i-(L.length-1)/2)*lh))}
+  ls('0px');cities(false);ctx.globalAlpha=1}
+function setMode(f){
+  if(f&&!C.length)return;
+  flat=f;fly=null;ff=null;inertia=false;
+  const b=$('zm');b.classList.toggle('on',f);b.textContent=f?'🌐':'🗺';b.setAttribute('aria-label',f?'Globo 3D':'Planisfério político');
+  if(f){if(!flatInit)initFlat();S=S0;mcx=0;mcy=0;clampFlat();if(sel>=0&&C[sel])flyFlat(C[sel].ctr[0],C[sel].ctr[1],fitS(C[sel]))}
+  $('hint').textContent=f?'Arraste para mover · pince para zoom · toque num país':'Arraste para girar · pince para zoom · toque num país';
+  document.title=f?'Atlas · Planisfério Político':'Atlas Globo · Satélite';$('zs').style.display=f?'none':'';if(f)$('at').style.display='none';req()}
+
 // ---- animação (só roda quando preciso)
 function req(){if(!raf)raf=requestAnimationFrame(frame)}
 function frame(t){raf=0;const dt=Math.min(50,t-last||16);last=t;let more=false;
+  if(flat){if(ff){const k=Math.min(1,(t-ff.t0)/ff.dur),e=1-Math.pow(1-k,3);mcx=ff.x0+(ff.x1-ff.x0)*e;mcy=ff.y0+(ff.y1-ff.y0)*e;S=Math.exp(Math.log(ff.s0)+(Math.log(ff.s1)-Math.log(ff.s0))*e);if(k>=1)ff=null;more=true}clampFlat();drawFlat();if(more)req();else last=0;return}
   if(fly){const k=Math.min(1,(t-fly.t0)/fly.dur),e=1-Math.pow(1-k,3);lon0=fly.l0+fly.dl*e;lat0=fly.p0+(fly.tp-fly.p0)*e;
     R=Math.exp(Math.log(fly.R0)+(Math.log(fly.tR)-Math.log(fly.R0))*e);if(k>=1)fly=null;more=true}
   else if(inertia){lon0-=vl*dt/16;lat0+=vp*dt/16;const f=Math.pow(.94,dt/16);vl*=f;vp*=f;if(Math.abs(vl)+Math.abs(vp)<.02)inertia=false;more=inertia}
@@ -302,16 +496,16 @@ function frame(t){raf=0;const dt=Math.min(50,t-last||16);last=t;let more=false;
   const anim=more||fly||inertia||(ready&&auto&&sel<0);draw(anim||P.size>0);if(anim)req();else last=0}
 function flyTo(tl,tp,tR){fly={t0:performance.now(),dur:700,l0:lon0,p0:lat0,R0:R,dl:((tl-lon0+540)%360)-180,tp:Math.max(-80,Math.min(80,tp)),tR};inertia=false;req()}
 function size(){W=cv.clientWidth;H=cv.clientHeight;dpr=Math.min(window.devicePixelRatio||1,1.75);cv.width=W*dpr;cv.height=H*dpr;
-  cx=W/2;cy=H*.46;const old=R0;R0=Math.min(W*.46,H*.4);R=old?R*R0/old:R0}
-const clampR=r=>Math.max(R0*.8,Math.min(R0*40,r));
+  cx=W/2;cy=H*.46;const old=R0;R0=Math.min(W*.46,H*.4);R=old?R*R0/old:R0;const oS=S0;S0=Math.min(W*.96/(2*HX),H*.78/(2*HY));S=oS?S*S0/oS:S0;if(flat)clampFlat()}
+const clampR=r=>Math.max(R0*.8,Math.min(R0*(onlineOn&&onlineOK?150:40),r));
 // ---- seleção
 function pick(i,go){
-  sel=i;if(i<0){$('sh').classList.remove('v');req();return}
+  sel=i;if(i<0){$('sh').classList.remove('v');document.body.classList.remove('sv');req();return}
   const c=C[i];$('n').textContent=c.name;$('cap').textContent=c.cap||'—';$('ct').textContent=c.cont;
   $('pop').textContent=c.pop?fmt(c.pop)+' hab.':'—';$('ar').textContent=c.area?fmt(Math.round(c.area))+' km²':'—';
   $('de').textContent=c.area>0&&c.pop?fmt(Math.round(c.pop/c.area*10)/10)+' hab./km²':'—';
-  $('sh').classList.add('v');$('hint').style.display='none';
-  if(go){const a=Math.max(c.bw*Math.cos(c.ctr[1]*RAD),c.bh,1);flyTo(c.ctr[0],c.ctr[1],clampR(.5*Math.min(W,H*.62)/(a*RAD)))}else req()}
+  $('sh').classList.add('v');$('hint').style.display='none';document.body.style.setProperty('--shh',$('sh').offsetHeight+'px');document.body.classList.add('sv');
+  if(go&&flat){flyFlat(c.ctr[0],c.ctr[1],fitS(c))}else if(go){const a=Math.max(c.bw*Math.cos(c.ctr[1]*RAD),c.bh,1);flyTo(c.ctr[0],c.ctr[1],clampR(.5*Math.min(W,H*.62)/(a*RAD)))}else req()}
 function hit(px,py){const x=(px-cx)/R,y=(cy-py)/R,d=x*x+y*y;if(d>1)return-1;setView();
   const[lo,la]=unproj(x,y,Math.sqrt(1-d));
   for(let k=ORDER.length-1;k>=0;k--){const c=ORDER[k];for(const r of c.rings){if(r.hole)continue;const b=r.b;if(lo<b[0]||lo>b[2]||la<b[1]||la>b[3])continue;if(inside(r,lo,la))return c.i}}
@@ -319,26 +513,31 @@ function hit(px,py){const x=(px-cx)/R,y=(cy-py)/R,d=x*x+y*y;if(d>1)return-1;setV
 // ---- gestos
 const P=new Map();let moved=0,t0=0,pd=0;
 const dist=()=>{const[p,q]=[...P.values()];return Math.hypot(p.x-q.x,p.y-q.y)};
-cv.addEventListener('pointerdown',e=>{P.set(e.pointerId,{x:e.clientX,y:e.clientY});auto=false;inertia=false;fly=null;vl=vp=0;
+cv.addEventListener('pointerdown',e=>{P.set(e.pointerId,{x:e.clientX,y:e.clientY});auto=false;inertia=false;fly=null;ff=null;vl=vp=0;
   if(P.size==1){moved=0;t0=Date.now()}else{moved=99;pd=dist()}});
 cv.addEventListener('pointermove',e=>{const p=P.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
+  if(flat){if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){mcx-=dx/S;mcy+=dy/S;clampFlat();req()}}
+    else if(P.size==2){const d=dist();if(pd){const[a,b]=[...P.values()];zoomFlat(d/pd,(a.x+b.x)/2,(a.y+b.y)/2)}pd=d}return}
   if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const k=57.3/R,a=dx*k,b=dy*k;lon0-=a;lat0+=b;vl=vl*.5+a*.5;vp=vp*.5+b*.5;req()}}
   else if(P.size==2){const d=dist();if(pd){R=clampR(R*d/pd);req()}pd=d}});
 cv.addEventListener('pointerup',e=>{
-  if(P.size==1&&moved<=8&&Date.now()-t0<500)pick(hit(e.clientX,e.clientY),true);
+  if(P.size==1&&moved<=8&&Date.now()-t0<500)pick(flat?hitFlat(e.clientX,e.clientY):hit(e.clientX,e.clientY),true);
   else if(P.size==1&&moved>8&&Math.abs(vl)+Math.abs(vp)>.3){inertia=true;req()}
   P.delete(e.pointerId);moved=99;pd=0;req()});
 cv.addEventListener('pointercancel',e=>{P.delete(e.pointerId)});
-cv.addEventListener('wheel',e=>{e.preventDefault();auto=false;R=clampR(R*(e.deltaY>0?1/1.15:1.15));req()},{passive:false});
-$('zi').onclick=()=>{auto=false;R=clampR(R*1.5);req()};$('zo').onclick=()=>{auto=false;R=clampR(R/1.5);req()};
+cv.addEventListener('wheel',e=>{e.preventDefault();auto=false;if(flat){zoomFlat(e.deltaY>0?1/1.15:1.15,e.clientX,e.clientY);return}R=clampR(R*(e.deltaY>0?1/1.15:1.15));req()},{passive:false});
+$('zi').onclick=()=>{if(flat){zoomFlat(1.5);return}auto=false;R=clampR(R*1.5);req()};$('zo').onclick=()=>{if(flat){zoomFlat(1/1.5);return}auto=false;R=clampR(R/1.5);req()};
+$('zm').onclick=()=>setMode(!flat);
+$('zs').onclick=e=>{onlineOn=!onlineOn;e.currentTarget.classList.toggle('on',onlineOn);e.currentTarget.setAttribute('aria-pressed',onlineOn);try{localStorage.setItem('atlas-online',onlineOn?'1':'0')}catch(_){}R=clampR(R);req()};
+$('zs').classList.toggle('on',onlineOn);$('zs').setAttribute('aria-pressed',onlineOn);
 $('zb').onclick=e=>{bordersOn=!bordersOn;e.currentTarget.classList.toggle('on',bordersOn);e.currentTarget.setAttribute('aria-pressed',bordersOn);req()};
-$('zr').onclick=()=>{pick(-1);auto=true;flyTo(lon0,15,R0)};
+$('zr').onclick=()=>{pick(-1);if(flat){flyFlat(0,0,S0);return}auto=true;flyTo(lon0,15,R0)};
 $('q').addEventListener('change',()=>{const v=norm($('q').value.trim());if(!v)return;
   let i=C.findIndex(c=>norm(c.name)===v||norm(c.admin)===v);
   if(i<0)i=C.findIndex(c=>norm(c.name).includes(v)||norm(c.cap).includes(v));
   if(i>=0){auto=false;pick(i,true);$('q').blur();return}
   let j=CITIES.findIndex(c=>norm(c.name)===v);if(j<0)j=CITIES.findIndex(c=>norm(c.name).includes(v));
-  if(j>=0){auto=false;pick(-1);flyTo(CITIES[j].lon,CITIES[j].lat,clampR(R0*12));$('q').blur()}});
+  if(j>=0){auto=false;pick(-1);if(flat)flyFlat(CITIES[j].lon,CITIES[j].lat,S0*12);else flyTo(CITIES[j].lon,CITIES[j].lat,clampR(R0*12));$('q').blur()}});
 $('x').onclick=()=>{pick(-1)};
 addEventListener('resize',()=>{size();req()});
 size();req();
