@@ -1,6 +1,6 @@
 // Service Worker do Atlas Globo: cache offline do HTML (que já contém a textura Blue Marble),
 // do manifest, dos ícones e dos dois arquivos do Natural Earth.
-const V = 'atlas-globo-v3';
+const V = 'atlas-globo-v4';
 const CORE = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png'];
 // aceita os nomes originais do Natural Earth e os nomes renomeados; o que não existir é ignorado
 const DATA = [
