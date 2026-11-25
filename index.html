@@ -30,7 +30,7 @@ button.on{background:var(--gold);border-color:#c79a00}
 #sh h2{padding-right:48px}
 #sh h2{margin:0 0 10px;font-size:26px;font-weight:600}
 #sh dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0}
-#sh dt{color:var(--mut)}#sh dd{margin:0}
+#sh{max-height:68vh;overflow-y:auto}#sh #og{font-size:14px;line-height:1.4}#sh dt{color:var(--mut)}#sh dd{margin:0}
 #hint{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 74px);text-align:center;color:#9fc4da;font-size:14px;pointer-events:none}
 </style>
 </head>
@@ -41,7 +41,7 @@ button.on{background:var(--gold);border-color:#c79a00}
 <div id="at">Imagens: Esri, Maxar, Earthstar Geographics</div>
 <div id="ld">Carregando imagem de satélite…</div>
 <div id="hint">Arraste para girar · pince para zoom · toque num país</div>
-<div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd></dl></div>
+<div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd></dl></div>
 <script>
 // Atlas Globo · Satélite — globo 3D (Canvas 2D) com textura NASA Blue Marble embutida.
 // Dados lidos offline de arquivos locais: países (Natural Earth 50m) e cidades (populated places 50m).
@@ -49,6 +49,247 @@ const FILES_C=['Paises.json','Países.json','paises.json','ne_10m_admin_0_countr
 const FILES_P=['ne_50m_populated_places.geojson','ne_50m_populated_places.json','Cidades.geojson','cidades.geojson','Cidades.json'];
 const CONT={'Africa':'África','Asia':'Ásia','Europe':'Europa','North America':'América do Norte','South America':'América do Sul','Oceania':'Oceania','Antarctica':'Antártida','Seven seas (open ocean)':'Ilhas oceânicas'};
 // nomes dos países em português (o arquivo só traz inglês), pela sigla ADM0_A3
+const INFO=Object.fromEntries(`ABW§Holandês e papiamento§Descendentes dos arawaks (caquetios), de colonos europeus e de africanos escravizados; mestiçagem antilhana.
+AFG§Dari e pachto§Mosaico de pachtuns (maioria), tadjiques, hazaras e uzbeques, de povos iranianos e túrquicos da Ásia Central.
+AGO§Português§Maioria bantu (ovimbundos, ambundos, bakongos), com herança colonial portuguesa e minoria mestiça.
+AIA§Inglês§Descendentes de africanos escravizados levados por colonos britânicos no séc. XVII.
+ALB§Albanês§Albaneses, povo indo-europeu dos Bálcãs, ligado em geral aos antigos ilírios, com influências romana, bizantina e otomana.
+ALD§Sueco§Povo de origem sueca, estabelecido nas ilhas desde a Idade Média.
+AND§Catalão§Povo de raízes catalãs nos Pireneus; hoje com forte presença de espanhóis e portugueses.
+ARE§Árabe§Árabes do Golfo (beduínos e comunidades costeiras); a maior parte da população atual é de imigrantes, sobretudo sul-asiáticos.
+ARG§Espanhol§Mestiços coloniais e, sobretudo, descendentes da grande imigração europeia (italianos e espanhóis) dos séc. XIX-XX.
+ARM§Armênio§Povo indo-europeu do Cáucaso, com identidade própria há mais de 2.500 anos.
+ASM§Samoano e inglês§Polinésios samoanos, em território dos EUA desde 1900.
+ATA§Nenhum§Sem população nativa nem permanente; apenas pesquisadores em bases científicas.
+ATC§Nenhum§Território australiano desabitado.
+ATF§Francês§Sem população permanente; apenas equipes científicas e militares francesas.
+ATG§Inglês§Descendentes de africanos escravizados trazidos para plantações britânicas.
+AUS§Inglês (de fato)§Povos aborígenes (presentes há mais de 50 mil anos) e maioria de descendentes de britânicos, irlandeses e imigrantes posteriores.
+AUT§Alemão§Povo germânico (bávaro-austríaco), formado no coração do antigo Império dos Habsburgo.
+AZE§Azerbaijano§Povo de língua túrquica com forte base iraniana e caucasiana.
+BDI§Quirundi, francês e inglês§Hutus (maioria), tutsis e twa, povos bantu e pigmeus dos Grandes Lagos.
+BEL§Neerlandês, francês e alemão§Flamengos (germânicos) e valões (romanizados), na fronteira entre os mundos germânico e latino.
+BEN§Francês§Povos fon, yoruba, adja e outros, herdeiros do antigo reino do Daomé.
+BFA§Francês§Mossis (maioria) e outros povos do Sahel, herdeiros dos reinos mossi.
+BGD§Bengali§Bengalis, povo indo-ariano do delta do Ganges-Brahmaputra.
+BGR§Búlgaro§Eslavos fundidos aos protobúlgaros (de origem túrquica) e aos antigos trácios.
+BHR§Árabe§Árabes do Golfo e comunidades xiitas locais (baharna), além de muitos imigrantes asiáticos.
+BHS§Inglês§Descendentes de africanos escravizados e de lealistas britânicos; os lucaios (taínos) desapareceram.
+BIH§Bósnio, croata e sérvio§Eslavos do sul: bósnios (em geral muçulmanos), sérvios (ortodoxos) e croatas (católicos).
+BLM§Francês§Descendentes de colonos franceses (bretões, normandos) e de africanos escravizados.
+BLR§Bielorrusso e russo§Eslavos orientais, herdeiros da Rus' de Kiev.
+BLZ§Inglês§Mistura de crioulos (afrodescendentes), mestiços, maias e garífunas.
+BMU§Inglês§Descendentes de colonos britânicos e de africanos escravizados.
+BOL§Espanhol e 36 línguas indígenas§Maioria indígena (quéchuas, aimarás) e mestiça, herdeira de Tiwanaku e do Império Inca.
+BRA§Português§Indígenas (tupis, jês e outros), portugueses, africanos escravizados e imigrantes italianos, alemães, japoneses, árabes e outros.
+BRB§Inglês§Descendentes de africanos escravizados em plantações britânicas.
+BRN§Malaio§Malaios, povo austronésio do Sudeste Asiático, com minoria chinesa.
+BTN§Dzongkha§Povos de origem tibetana (ngalops, sharchops) e, no sul, de origem nepalesa.
+BWA§Inglês (oficial) e tsuana (nacional)§Tsuanas (bantu), maioria, com minoria san.
+CAF§Francês e sango§Mosaico de povos bantu, ubangi e sudaneses (banda, gbaya e outros).
+CAN§Inglês e francês§Povos originários (primeiras nações, inuítes e métis), colonos franceses e britânicos e imigrantes de todo o mundo.
+CHE§Alemão, francês, italiano e romanche§Povos alpinos celtas romanizados e germânicos (alamanos), unidos em confederação desde 1291.
+CHL§Espanhol§Mestiços de espanhóis com mapuches e outros indígenas, mais imigração europeia.
+CHN§Mandarim§Han (cerca de 92%), povo originado na bacia do Rio Amarelo, mais 55 minorias (tibetanos, uigures, zhuang, mongóis e outras).
+CIV§Francês§Dezenas de povos: akans, mandês, krous e voltaicos.
+CMR§Francês e inglês§Mais de 200 grupos bantu, semibantu e sudaneses; colonizado por alemães, franceses e britânicos.
+COD§Francês§Mais de 200 grupos, em grande parte bantu (luba, kongo, mongo), além de povos sudaneses e nilóticos.
+COG§Francês§Povos bantu (bakongo, teke, mbochi), herdeiros dos reinos Kongo e Teke.
+COK§Inglês e maori das Ilhas Cook§Polinésios maoris, aparentados aos maoris da Nova Zelândia.
+COL§Espanhol§Mestiços de espanhóis, indígenas (chibchas, caribes e outros) e africanos escravizados.
+COM§Comoriano, árabe e francês§Mistura de bantu africanos, árabes, malgaxes e persas (xirazi).
+CPV§Português§Descendentes de portugueses e africanos escravizados; ilhas desabitadas antes de 1460.
+CRI§Espanhol§Maioria de descendentes de espanhóis, com poucos indígenas.
+CUB§Espanhol§Descendentes de espanhóis (incluindo canários) e de africanos escravizados; os taínos foram extintos.
+CUW§Holandês e papiamento§Afrodescendentes de escravizados, com holandeses, sefarditas e herança dos caquetios.
+CYM§Inglês§Descendentes de britânicos e de africanos escravizados, com imigrantes recentes.
+CYN§Turco§Cipriotas turcos, descendentes de otomanos, mais colonos vindos da Turquia.
+CYP§Grego e turco§Cipriotas gregos (maioria) e turcos, com heranças micênica, bizantina e otomana.
+CZE§Tcheco§Tchecos, eslavos ocidentais da Boêmia e da Morávia, com forte convivência histórica com alemães.
+DEU§Alemão§Povo germânico formado por francos, saxões, bávaros, suábios e outros, unificado em 1871.
+DJI§Francês e árabe§Somalis issas e afares (cuxitas), com minoria árabe.
+DMA§Inglês§Descendentes de africanos escravizados, com minoria kalinago (caribes).
+DNK§Dinamarquês§Povo germânico nórdico, de tradição viking.
+DOM§Espanhol§Mestiços de espanhóis, africanos escravizados e taínos.
+DZA§Árabe e tamazigue§Berberes (povo original do Magreb) em grande parte arabizados desde o séc. VII.
+ECU§Espanhol§Mestiços (maioria), indígenas quíchuas e afroequatorianos.
+EGY§Árabe§Egípcios, herdeiros dos povos do antigo vale do Nilo e arabizados desde o séc. VII.
+ERI§Sem língua oficial formal (tigrínia, árabe e inglês)§Povos tigrínias e tigré (semíticos) e outros grupos cuxitas e nilóticos.
+ESP§Espanhol§Mistura de iberos, celtas, romanos, visigodos e mouros; catalães, bascos e galegos mantêm línguas e identidades próprias.
+EST§Estoniano§Povo fino-úgrico do Báltico, aparentado aos finlandeses.
+ETH§Amárico (e línguas regionais)§Mais de 80 povos, entre eles oromos, amaras e tigrés (cuxitas e semitas).
+FIN§Finlandês e sueco§Povo fino-úgrico, com minoria de língua sueca.
+FJI§Inglês, fijiano e hindi§Melanésios fijianos (maioria) e indo-fijianos, descendentes de indianos contratados no séc. XIX.
+FLK§Inglês§Descendentes de colonos britânicos; não havia população nativa.
+FRA§Francês§Gauleses romanizados, francos e outros; depois imigrações italiana, polonesa, magrebina e africana.
+FRO§Feroês e dinamarquês§Descendentes de vikings noruegueses e de gaélicos (séc. IX).
+FSM§Inglês§Micronésios (chuukeses, pohnpeianos, yapeses e kosraeanos).
+GAB§Francês§Povos bantu (fang, mpongwé, teke).
+GBR§Inglês (de fato)§Mistura de celtas, romanos, anglo-saxões, vikings e normandos; escoceses, galeses e irlandeses do norte mantêm identidades próprias.
+GEO§Georgiano§Povo kartveliano do Cáucaso, de origem pré-indo-europeia.
+GGY§Inglês§Descendentes de normandos e britânicos, com tradições próprias do arquipélago do Canal.
+GHA§Inglês§Povos akans (ashantis, fantes), mole-dagbani, ewes e gas.
+GIN§Francês§Fulas, mandingas e sussus.
+GMB§Inglês§Mandingas, fulas e uolofes, ligados ao antigo Império do Mali.
+GNB§Português§Balantas, fulas, mandingas, papéis e outros povos da costa africana.
+GNQ§Espanhol, francês e português§Fang (continente), bubis (ilha de Bioko) e annobonenses.
+GRC§Grego§Povo helênico com continuidade desde a Antiguidade, misturado a eslavos, albaneses e outros.
+GRD§Inglês§Afrodescendentes, descendentes de escravizados de plantações.
+GRL§Groenlandês§Inuítes (kalaallit), descendentes dos povos Thule do Ártico canadense.
+GTM§Espanhol§Quase metade é maia (quichés, kaqchikeles e outros); o restante, ladinos mestiços.
+GUM§Inglês e chamorro§Chamorros (austronésios), com influências espanhola, filipina e norte-americana.
+GUY§Inglês§Indo-guianenses (descendentes de contratados indianos), afro-guianenses, indígenas e mestiços.
+HKG§Chinês e inglês§Chineses han, sobretudo cantoneses, mais comunidade de origem britânica.
+HMD§Nenhum§Território australiano sem habitantes permanentes.
+HND§Espanhol§Mestiços, com minorias lencas, garífunas e maias.
+HRV§Croata§Eslavos do sul (croatas), estabelecidos nos Bálcãs desde o séc. VII.
+HTI§Crioulo haitiano e francês§Descendentes de africanos escravizados, que fizeram a revolução de 1804.
+HUN§Húngaro§Magiares, de origem fino-úgrica (vindos dos Urais por volta do séc. IX), misturados a eslavos e outros.
+IDN§Indonésio§Mais de 300 grupos austronésios (javaneses, sundaneses e outros), com minorias papuas melanésias.
+IMN§Inglês§Povo manx, de origem celta, com mistura gaélica e nórdica.
+IND§Hindi e inglês§Mosaico de povos indo-arianos, dravidianos, tibeto-birmaneses e austro-asiáticos; cerca de 22 línguas reconhecidas.
+IOA§Inglês (e malaio nas Cocos)§Malaios cocos e chineses, mais colonos de origem britânica.
+IOT§Inglês§Sem população nativa; os chagossianos foram removidos nas décadas de 1960-70 e hoje há uma base militar em Diego Garcia.
+IRL§Irlandês e inglês§Celtas gaélicos, com camadas viking, normanda e inglesa.
+IRN§Persa§Persas (iranianos), com minorias azeris, curdos, lures, árabes e balúchis.
+IRQ§Árabe e curdo§Árabes (sunitas e xiitas) e curdos, na terra de sumérios, babilônios e assírios.
+ISL§Islandês§Descendentes de noruegueses e gaélicos que povoaram a ilha no séc. IX.
+ISR§Hebraico (árabe com status especial)§Judeus de origens diversas (asquenazes, sefarditas, mizrahim) e árabes palestinos.
+ITA§Italiano§Povos itálicos, etruscos, gregos e celtas, romanizados e depois mesclados com outros povos.
+JAM§Inglês§Descendentes de africanos escravizados (maioria), com minorias indianas, chinesas e britânicas.
+JEY§Inglês e francês§Normandos e britânicos, com tradições do arquipélago do Canal.
+JOR§Árabe§Árabes beduínos e palestinos, com minorias circassianas e chechenas.
+JPN§Japonês (de fato)§Japoneses (yamato), da mescla dos Jomon locais com imigrantes Yayoi da Ásia continental; o povo ainu vive ao norte.
+KAS§Nenhum§Zona glacial disputada entre Índia e Paquistão, sem habitantes permanentes.
+KAZ§Cazaque e russo§Cazaques, povo túrquico-mongol nômade; também russos, ucranianos e alemães.
+KEN§Suaíli e inglês§Povos bantu (quicuios, luyas), nilóticos (luos, kalenjin) e cuxitas.
+KGZ§Quirguiz e russo§Quirguizes, povo túrquico nômade da Ásia Central.
+KHM§Khmer§Khmers (austro-asiáticos), herdeiros do Império Khmer de Angkor.
+KIR§Inglês e gilbertês§Micronésios.
+KNA§Inglês§Afrodescendentes, descendentes de escravizados, mais europeus.
+KOR§Coreano§Coreanos, povo da península, provavelmente originado de migrações da Sibéria e da Manchúria.
+KOS§Albanês e sérvio§Albaneses (maioria) e sérvios; independente da Sérvia desde 2008.
+KWT§Árabe§Árabes do Golfo; os estrangeiros são maioria da população.
+LAO§Lao§Lao (tai), da família tai-kadai, vindos do sul da China.
+LBN§Árabe§Árabes com herança fenícia, mais armênios e outras comunidades.
+LBR§Inglês§Descendentes de afro-americanos libertos (americo-liberianos) e povos locais (kpelles, bassas).
+LBY§Árabe§Árabes e berberes, com minorias tuaregues e tebus.
+LCA§Inglês§Afrodescendentes, com influências francesa e britânica.
+LIE§Alemão§Alamanos, povo germânico dos Alpes.
+LKA§Cingalês e tâmil§Cingaleses (indo-arianos, budistas) e tâmeis (dravidianos, hindus).
+LSO§Sesoto e inglês§Basotos, povo bantu reunido por Moshoeshoe I no séc. XIX.
+LTU§Lituano§Povo báltico indo-europeu, de identidade antiga.
+LUX§Luxemburguês, francês e alemão§Germânicos (francos do Mosela) com forte influência francesa.
+LVA§Letão§Povo báltico, com grande minoria russa.
+MAC§Chinês e português§Chineses han (cantoneses), com minoria portuguesa e macaense.
+MAF§Francês§Descendentes de africanos escravizados e de franceses.
+MAR§Árabe e tamazigue§Berberes arabizados, com influências árabe, andaluza e africana.
+MCO§Francês§Monegascos (de origem ligúria), hoje minoria entre residentes estrangeiros.
+MDA§Romeno§Romenos, descendentes de dácios romanizados, com minorias russa, ucraniana e gagauz.
+MDG§Malgaxe (francês também usado)§Povo de ancestrais austronésios (vindos de Bornéu) e africanos bantu.
+MDV§Divehi§Povo indo-ariano de origem indiana e cingalesa, com influência árabe.
+MEX§Espanhol (de fato) e 68 línguas indígenas§Mestiços de espanhóis e indígenas (nauás, maias, zapotecas e outros).
+MHL§Marshalês e inglês§Micronésios.
+MKD§Macedônio§Eslavos do sul, com grande minoria albanesa.
+MLI§Francês§Povos mandês (bambaras, malinquês), fulas e tuaregues, herdeiros dos impérios Mali e Songai.
+MLT§Maltês e inglês§Povo mediterrâneo de base árabe-siciliana, com influências italiana e inglesa.
+MMR§Birmanês§Bamares (birmaneses, maioria), com mons, shans, karens, rohingyas e outros.
+MNE§Montenegrino§Eslavos do sul, próximos dos sérvios, com minorias bósnia e albanesa.
+MNG§Mongol§Mongóis, povo nômade das estepes, herdeiro do Império de Gengis Khan.
+MNP§Inglês, chamorro e carolino§Chamorros e carolinos (micronésios).
+MOZ§Português§Povos bantu (macuas, tsongas, senas), com minorias indiana e portuguesa.
+MRT§Árabe§Mouros (árabe-berberes), haratines e africanos subsaarianos.
+MSR§Inglês§Descendentes de irlandeses e de africanos escravizados.
+MUS§Inglês (oficial); francês e crioulo muito usados§Descendentes de indianos contratados (maioria), africanos e franceses; ilha desabitada antes do séc. XVII.
+MWI§Inglês e chicheua§Povos bantu (chewas, lomwes, yaos).
+MYS§Malaio§Malaios, chineses, indianos e povos indígenas de Bornéu.
+NAM§Inglês§Ovambos (bantu), kavangos, hereros e namas; também san e minoria alemã.
+NCL§Francês§Canacos (melanésios) e europeus.
+NER§Francês§Haussás, zarmas, tuaregues, songais e fulas.
+NFK§Inglês§Descendentes dos amotinados do Bounty e de taitianos.
+NGA§Inglês§Mais de 250 grupos, entre eles haussás, iorubás e igbos.
+NIC§Espanhol§Mestiços, com minorias miskitos, crioulos e garífunas.
+NIU§Inglês e niueano§Polinésios.
+NLD§Neerlandês§Povo germânico formado por frísios, francos e saxões.
+NOR§Norueguês§Povo germânico nórdico (de tradição viking), mais sâmis ao norte.
+NPL§Nepalês§Povos indo-arianos (khas, brâmanes) e tibeto-birmaneses (gurungs, newars).
+NRU§Nauruano e inglês§Micronésios (nauruanos).
+NZL§Inglês, maori e língua de sinais§Maoris (polinésios chegados por volta do séc. XIII) e europeus (pakeha), mais asiáticos e outros polinésios.
+OMN§Árabe§Árabes ibaditas, com laços históricos com a África oriental e o Baluchistão.
+PAK§Urdu e inglês§Punjabis, sindis, pachtuns e balúchis, povos indo-iranianos.
+PAN§Espanhol§Mestiços, afropanamenhos e indígenas (gunas, ngäbes).
+PCN§Inglês§Descendentes dos amotinados do Bounty e de taitianos.
+PER§Espanhol, quíchua e aimará§Mestiços e indígenas, herdeiros de Caral, Chavín e do Império Inca.
+PHL§Filipino e inglês§Austronésios (tagalos, cebuanos, ilocanos), com influências espanhola e chinesa.
+PLW§Palauano e inglês§Micronésios.
+PNG§Inglês, tok pisin e hiri motu§Melanésios e papuas, com mais de 800 línguas.
+POL§Polonês§Eslavos ocidentais (polanos), da bacia do Vístula.
+PRI§Espanhol e inglês§Descendentes de taínos, espanhóis e africanos escravizados.
+PRK§Coreano§Coreanos, povo da península, provavelmente originado de migrações da Sibéria e da Manchúria.
+PRT§Português§Lusitanos e celtas romanizados, com contribuições visigoda e moura.
+PRY§Espanhol e guarani§Mestiços de espanhóis e guaranis, com forte presença do idioma guarani.
+PSX§Árabe§Árabes palestinos, descendentes de povos do Levante arabizados.
+PYF§Francês§Polinésios maoris do Taiti e outras ilhas, mais franceses.
+QAT§Árabe§Árabes do Golfo; a maioria dos residentes é imigrante.
+ROU§Romeno§Romenos, descendentes de dácios romanizados.
+RUS§Russo§Eslavos orientais, herdeiros da Rus' de Kiev, com dezenas de povos (tártaros, chechenos, iacutos e outros).
+RWA§Quiniaruanda, francês, inglês e suaíli§Banyarwanda (hutus, tutsis e twa), povos bantu e pigmeus.
+SAH§Árabe§Sarauís, árabe-berberes de língua hassania.
+SAU§Árabe§Árabes da península, berço do Islã.
+SDN§Árabe e inglês§Árabes, núbios e povos africanos do Sudão e do Darfur.
+SDS§Inglês§Povos nilóticos (dinkas, nuers) e outros grupos.
+SEN§Francês§Uolofes, serers, fulas e toucouleurs.
+SGP§Inglês, malaio, mandarim e tâmil§Imigrantes chineses (maioria), malaios e indianos, a partir da fundação britânica em 1819.
+SGS§Nenhum§Sem população permanente; apenas equipes científicas.
+SHN§Inglês§Descendentes de britânicos e de africanos e asiáticos escravizados.
+SLB§Inglês§Melanésios.
+SLE§Inglês§Temnes e mendes, além dos krios, descendentes de libertos.
+SLV§Espanhol§Mestiços e indígenas nauas (pipiles).
+SMR§Italiano§Povo de origem italiana, com república independente desde a Idade Média.
+SOL§Somali§Somalis, povo cuxita do Chifre da África; autodeclarada independente em 1991.
+SOM§Somali e árabe§Somalis (cuxitas), organizados em clãs.
+SPM§Francês§Descendentes de colonos franceses (bascos, bretões e normandos).
+SRB§Sérvio§Eslavos do sul, com minorias húngara e outras.
+STP§Português§Descendentes de africanos escravizados e portugueses; ilhas desabitadas antes dos portugueses.
+SUR§Holandês§Indo-surinameses, javaneses, afro-surinameses (marrons) e indígenas.
+SVK§Eslovaco§Eslavos ocidentais.
+SVN§Esloveno§Eslavos do sul, nos Alpes.
+SWE§Sueco§Povo germânico nórdico, com sâmis e finlandeses.
+SWZ§Suázi e inglês§Suázis, povo bantu.
+SXM§Inglês e holandês§Afrodescendentes e europeus.
+SYC§Crioulo seichelense, inglês e francês§Descendentes de colonos franceses, africanos e indianos; ilhas desabitadas até 1770.
+SYR§Árabe§Árabes (maioria), curdos, armênios e outros.
+TCA§Inglês§Descendentes de africanos escravizados e de colonos.
+TCD§Francês e árabe§Árabes e povos sudaneses e bantu, com mais de 200 grupos.
+TGO§Francês§Ewes (sul) e kabyes (norte).
+THA§Tailandês§Tais (família tai-kadai), vindos do sul da China, mesclados a mons e khmers.
+TJK§Tadjique§Povo iraniano (persa) da Ásia Central.
+TKM§Turcomeno§Turcomenos, povo túrquico de origem oguz.
+TLS§Tétum e português§Povos austronésios e papuas, com língua franca tétum.
+TON§Tonganês e inglês§Polinésios.
+TTO§Inglês§Descendentes de africanos escravizados e de indianos contratados.
+TUN§Árabe§Berberes arabizados, com raízes cartaginesas e romanas.
+TUR§Turco§Turcos (de origem oguz), vindos da Ásia Central e mesclados a povos da Anatólia.
+TWN§Mandarim§Han (hoklos, hakkas e imigrantes pós-1949) e povos austronésios indígenas.
+TZA§Suaíli e inglês§Mais de 120 grupos bantu, nilóticos e cuxitas; Zanzibar tem herança árabe.
+UGA§Inglês e suaíli§Bantu (gandas), nilóticos e outros.
+UKR§Ucraniano§Eslavos orientais, herdeiros da Rus' de Kiev.
+URY§Espanhol§Descendentes de europeus, sobretudo espanhóis e italianos.
+USA§Inglês (declarado oficial por decreto em 2025)§Povos indígenas, colonos britânicos, africanos escravizados e imigrantes de todo o mundo.
+UZB§Uzbeque§Uzbeques, povo túrquico que absorveu povos iranianos.
+VAT§Latim e italiano§Sem povo nativo; clero e funcionários da Igreja Católica.
+VCT§Inglês§Afrodescendentes e garífunas.
+VEN§Espanhol§Mestiços de espanhóis, indígenas e africanos.
+VGB§Inglês§Afrodescendentes, descendentes de escravizados.
+VIR§Inglês§Afrodescendentes e descendentes de colonos dinamarqueses.
+VNM§Vietnamita§Kinh (vietnamitas), de origem austro-asiática, com influências chinesas.
+VUT§Bislama, inglês e francês§Melanésios (ni-vanuatu).
+WLF§Francês§Polinésios.
+WSM§Samoano e inglês§Polinésios samoanos.
+YEM§Árabe§Árabes iemenitas, herdeiros dos antigos reinos sabeus.
+ZAF§12 línguas oficiais§Povos bantu (zulus, xhosas), khoisan, africâneres (de origem holandesa), indianos e mestiços.
+ZMB§Inglês§Povos bantu (bembas, tongas e outros).
+ZWE§16 línguas oficiais§Shonas (bantu) e ndebeles, herdeiros do Grande Zimbábue.`.split('\n').map(l=>{const p=l.split('§');return[p[0],{l:p[1],o:p[2]}]}));
 const PT=Object.fromEntries(`ABW:Aruba|AFG:Afeganistão|AGO:Angola|AIA:Anguila|ALB:Albânia|ALD:Åland|AND:Andorra|ARE:Emirados Árabes Unidos|ARG:Argentina|ARM:Armênia|ASM:Samoa Americana|ATA:Antártida|ATC:Ilhas Ashmore e Cartier|ATF:Terras Austrais Francesas|ATG:Antígua e Barbuda|AUS:Austrália|AUT:Áustria|AZE:Azerbaijão|BDI:Burundi|BEL:Bélgica|BEN:Benin|BFA:Burkina Faso|BGD:Bangladesh|BGR:Bulgária|BHR:Bahrein|BHS:Bahamas|BIH:Bósnia e Herzegovina|BLM:São Bartolomeu|BLR:Bielorrússia|BLZ:Belize|BMU:Bermudas|BOL:Bolívia|BRA:Brasil|BRB:Barbados|BRN:Brunei|BTN:Butão|BWA:Botsuana|CAF:Rep. Centro-Africana|CAN:Canadá|CHE:Suíça|CHL:Chile|CHN:China|CIV:Costa do Marfim|CMR:Camarões|COD:RD do Congo|COG:Congo|COK:Ilhas Cook|COL:Colômbia|COM:Comores|CPV:Cabo Verde|CRI:Costa Rica|CUB:Cuba|CUW:Curaçao|CYM:Ilhas Cayman|CYN:Chipre do Norte|CYP:Chipre|CZE:Tchéquia|DEU:Alemanha|DJI:Djibuti|DMA:Dominica|DNK:Dinamarca|DOM:Rep. Dominicana|DZA:Argélia|ECU:Equador|EGY:Egito|ERI:Eritreia|ESP:Espanha|EST:Estônia|ETH:Etiópia|FIN:Finlândia|FJI:Fiji|FLK:Ilhas Malvinas|FRA:França|FRO:Ilhas Faroé|FSM:Micronésia|GAB:Gabão|GBR:Reino Unido|GEO:Geórgia|GGY:Guernsey|GHA:Gana|GIN:Guiné|GMB:Gâmbia|GNB:Guiné-Bissau|GNQ:Guiné Equatorial|GRC:Grécia|GRD:Granada|GRL:Groenlândia|GTM:Guatemala|GUM:Guam|GUY:Guiana|HKG:Hong Kong|HMD:Ilhas Heard e McDonald|HND:Honduras|HRV:Croácia|HTI:Haiti|HUN:Hungria|IDN:Indonésia|IMN:Ilha de Man|IND:Índia|IOA:Terr. do Oceano Índico|IOT:Terr. Brit. do Oceano Índico|IRL:Irlanda|IRN:Irã|IRQ:Iraque|ISL:Islândia|ISR:Israel|ITA:Itália|JAM:Jamaica|JEY:Jersey|JOR:Jordânia|JPN:Japão|KAS:Geleira Siachen|KAZ:Cazaquistão|KEN:Quênia|KGZ:Quirguistão|KHM:Camboja|KIR:Kiribati|KNA:São Cristóvão e Névis|KOR:Coreia do Sul|KOS:Kosovo|KWT:Kuwait|LAO:Laos|LBN:Líbano|LBR:Libéria|LBY:Líbia|LCA:Santa Lúcia|LIE:Liechtenstein|LKA:Sri Lanka|LSO:Lesoto|LTU:Lituânia|LUX:Luxemburgo|LVA:Letônia|MAC:Macau|MAF:São Martinho|MAR:Marrocos|MCO:Mônaco|MDA:Moldávia|MDG:Madagascar|MDV:Maldivas|MEX:México|MHL:Ilhas Marshall|MKD:Macedônia do Norte|MLI:Mali|MLT:Malta|MMR:Mianmar|MNE:Montenegro|MNG:Mongólia|MNP:Ilhas Marianas do Norte|MOZ:Moçambique|MRT:Mauritânia|MSR:Montserrat|MUS:Maurício|MWI:Malawi|MYS:Malásia|NAM:Namíbia|NCL:Nova Caledônia|NER:Níger|NFK:Ilha Norfolk|NGA:Nigéria|NIC:Nicarágua|NIU:Niue|NLD:Países Baixos|NOR:Noruega|NPL:Nepal|NRU:Nauru|NZL:Nova Zelândia|OMN:Omã|PAK:Paquistão|PAN:Panamá|PCN:Ilhas Pitcairn|PER:Peru|PHL:Filipinas|PLW:Palau|PNG:Papua-Nova Guiné|POL:Polônia|PRI:Porto Rico|PRK:Coreia do Norte|PRT:Portugal|PRY:Paraguai|PSX:Palestina|PYF:Polinésia Francesa|QAT:Catar|ROU:Romênia|RUS:Rússia|RWA:Ruanda|SAH:Saara Ocidental|SAU:Arábia Saudita|SDN:Sudão|SDS:Sudão do Sul|SEN:Senegal|SGP:Singapura|SGS:Geórgia do Sul e Sandwich do Sul|SHN:Santa Helena|SLB:Ilhas Salomão|SLE:Serra Leoa|SLV:El Salvador|SMR:San Marino|SOL:Somalilândia|SOM:Somália|SPM:Saint-Pierre e Miquelon|SRB:Sérvia|STP:São Tomé e Príncipe|SUR:Suriname|SVK:Eslováquia|SVN:Eslovênia|SWE:Suécia|SWZ:Essuatíni|SXM:Sint Maarten|SYC:Seicheles|SYR:Síria|TCA:Ilhas Turks e Caicos|TCD:Chade|TGO:Togo|THA:Tailândia|TJK:Tadjiquistão|TKM:Turcomenistão|TLS:Timor-Leste|TON:Tonga|TTO:Trinidad e Tobago|TUN:Tunísia|TUR:Turquia|TWN:Taiwan|TZA:Tanzânia|UGA:Uganda|UKR:Ucrânia|URY:Uruguai|USA:Estados Unidos|UZB:Uzbequistão|VAT:Vaticano|VCT:São Vicente e Granadinas|VEN:Venezuela|VGB:Ilhas Virgens Britânicas|VIR:Ilhas Virgens Americanas|VNM:Vietnã|VUT:Vanuatu|WLF:Wallis e Futuna|WSM:Samoa|YEM:Iêmen|ZAF:África do Sul|ZMB:Zâmbia|ZWE:Zimbábue`.split('|').map(s=>s.split(':')));
 // oceanos e mares [nome, lon, lat, zoom mín., zoom máx., oceano?]
 const SEAS=[
@@ -505,6 +746,7 @@ function pick(i,go){
   const c=C[i];$('n').textContent=c.name;$('cap').textContent=c.cap||'—';$('ct').textContent=c.cont;
   $('pop').textContent=c.pop?fmt(c.pop)+' hab.':'—';$('ar').textContent=c.area?fmt(Math.round(c.area))+' km²':'—';
   $('de').textContent=c.area>0&&c.pop?fmt(Math.round(c.pop/c.area*10)/10)+' hab./km²':'—';
+  const inf=INFO[c.adm]||INFO[c.iso]||{};$('lg').textContent=inf.l||'—';$('og').textContent=inf.o||'—';$('sh').scrollTop=0;
   $('sh').classList.add('v');$('hint').style.display='none';document.body.style.setProperty('--shh',$('sh').offsetHeight+'px');document.body.classList.add('sv');
   if(go&&flat){flyFlat(c.ctr[0],c.ctr[1],fitS(c))}else if(go){const a=Math.max(c.bw*Math.cos(c.ctr[1]*RAD),c.bh,1);flyTo(c.ctr[0],c.ctr[1],clampR(.5*Math.min(W,H*.62)/(a*RAD)))}else req()}
 function hit(px,py){const x=(px-cx)/R,y=(cy-py)/R,d=x*x+y*y;if(d>1)return-1;setView();
