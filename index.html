@@ -1005,7 +1005,7 @@ function size(){W=cv.clientWidth;H=cv.clientHeight;dpr=Math.min(window.devicePix
 const clampR=r=>Math.max(R0*.8,Math.min(R0*(onlineOn&&onlineOK&&navigator.onLine!==false?150:40),r));
 // ---- seleção
 let curI=-1;
-function omClose(){$('om').hidden=true}
+function omClose(){$('om').hidden=true;$('ob').scrollTop=0}
 function omOpen(i){const c=C[i];if(!c)return;const d=ORIG[c.adm]||ORIG[c.iso];const b=$('ob');b.textContent='';$('ot').textContent=c.name;
   const add=(h,t)=>{if(!t)return;const e=document.createElement('h3');e.textContent=h;b.appendChild(e);const p=document.createElement('p');p.textContent=t;b.appendChild(p)};
   if(d){if(d.m||d.h){add('Pré-história e Antiguidade',d.p);add('Idade Média e Era Moderna',d.m);add('Séc. XX e hoje',d.h)}else add('Formação do povo',d.p)}else add('Formação do povo','Ainda não há texto para este território.');
@@ -1013,7 +1013,7 @@ function omOpen(i){const c=C[i];if(!c)return;const d=ORIG[c.adm]||ORIG[c.iso];co
   add(REG.G.t,REG.G.x);
   const e=document.createElement('h3');e.textContent='Fontes consultadas';b.appendChild(e);const u=document.createElement('ul');for(const t of SRC){const li=document.createElement('li');li.textContent=t;u.appendChild(li)}b.appendChild(u);
   const n=document.createElement('p');n.className='sr';n.style.marginTop='10px';n.textContent='Sínteses gerais; datas e origens aproximadas e sujeitas a revisão científica.';b.appendChild(n);
-  b.scrollTop=0;$('om').hidden=false;try{history.pushState({om:1},'')}catch(_){}}
+  $('om').hidden=false;b.scrollTop=0;requestAnimationFrame(()=>{b.scrollTop=0});try{history.pushState({om:1},'')}catch(_){}}
 $('obtn').onclick=()=>omOpen(curI);
 $('oc').onclick=()=>{if(history.state&&history.state.om)history.back();else omClose()};
 addEventListener('popstate',omClose);
