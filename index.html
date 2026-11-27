@@ -42,7 +42,7 @@ button.on{background:var(--gold);border-color:#c79a00}
 <div id="ld">Carregando imagem de satélite…</div>
 <div id="hint">Arraste para girar · pince para zoom · toque num país</div>
 <div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd></dl><button id="obtn" type="button">Formação do povo: da pré-história a hoje ›</button><a id="gmc" class="lk s" target="_blank" rel="noopener">Abrir país no mapa ›</a></div>
-<div id="cs" role="status"><button id="cx" aria-label="Fechar">✕</button><h2 id="cn"></h2><p id="cd"></p><a id="gm" class="lk" target="_blank" rel="noopener">Abrir no Google Maps ›</a><a id="osm" class="lk s" target="_blank" rel="noopener">Abrir no OpenStreetMap ›</a></div>
+<div id="cs" role="status"><button id="cx" aria-label="Fechar">✕</button><h2 id="cn"></h2><p id="cd"></p><a id="gm" class="lk" target="_blank" rel="noopener">Abrir no Google Maps ›</a></div>
 <div id="om" role="dialog" aria-modal="true" aria-labelledby="ot" hidden><div id="oh"><button id="oc" type="button" aria-label="Voltar">‹</button><h2 id="ot"></h2></div><div id="ob"></div></div>
 <script>
 // Atlas Globo · Satélite — globo 3D (Canvas 2D) com textura NASA Blue Marble embutida.
@@ -1010,7 +1010,6 @@ function closeCity(){$('cs').classList.remove('v');if(sel<0)document.body.classL
 function openCity(c){pick(-1);$('cn').textContent=c.name;const pc=C.find(x=>x.adm===c.adm);
   $('cd').textContent=[pc?pc.name:'',c.cap?'capital':'',c.pop?fmt(c.pop)+' hab.':''].filter(Boolean).join(' · ');
   $('gm').href='https://www.google.com/maps/search/?api=1&query='+c.lat+','+c.lon;
-  $('osm').href='https://www.openstreetmap.org/?mlat='+c.lat+'&mlon='+c.lon+'#map=13/'+c.lat+'/'+c.lon;
   $('hint').style.display='none';$('cs').classList.add('v');document.body.style.setProperty('--shh',$('cs').offsetHeight+'px');document.body.classList.add('sv')}
 function nearCity(px,py){let b=null,bd=1e9;for(const[x,y,c,w]of CP){const dx=px-x,dy=py-y;if(dx>=-16&&dx<=10+w&&Math.abs(dy)<=14){const d=Math.abs(dx)+Math.abs(dy);if(d<bd){bd=d;b=c}}}return b}
 $('cx').onclick=closeCity;
