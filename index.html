@@ -649,10 +649,10 @@ function buildCities(gj){
     arr.push({name,lon,lat,cap,rk,t,pop:num(g('pop_max'))||0,adm:g('adm0_a3')||'',iso2:g('iso_a2')||'',
       v:[Math.cos(lat*RAD)*Math.cos(lon*RAD),Math.cos(lat*RAD)*Math.sin(lon*RAD),Math.sin(lat*RAD)]})}
   // aparição gradual por zoom (em múltiplos do zoom inicial): capitais primeiro, das mais importantes às menores
-  // (CAP_Z0→CAP_Z1); depois as demais cidades, das maiores às menores, até todas no zoom CITY_ZMAX
-  const CAP_Z0=3,CAP_Z1=8,CITY_Z1=40,CITY_ZMAX=40,imp=(a,b)=>(b.pop-a.pop)||(a.rk-b.rk);
+  // (todas juntas em CAP_Z); depois as demais cidades, das maiores às menores, de CITY_Z0 até todas em CITY_ZMAX
+  const CAP_Z=3,CITY_Z0=8,CITY_ZMAX=40,imp=(a,b)=>(b.pop-a.pop)||(a.rk-b.rk);
   const spread=(l,z0,z1)=>{l.sort(imp);const n=Math.max(1,l.length-1);l.forEach((c,i)=>{c.t=Math.log2(z0*Math.pow(z1/z0,i/n))+1.7})};
-  spread(arr.filter(c=>c.cap),CAP_Z0,CAP_Z1);spread(arr.filter(c=>!c.cap),CAP_Z1,CITY_ZMAX);
+  spread(arr.filter(c=>c.cap),CAP_Z,CAP_Z);spread(arr.filter(c=>!c.cap),CITY_Z0,CITY_ZMAX);
   arr.sort((a,b)=>a.t-b.t||(b.cap-a.cap)||b.pop-a.pop);CITIES=arr}
 function linkCapitals(){
   const m={};for(const c of CITIES)if(c.cap){(m[c.adm]=m[c.adm]||[]).push(c);if(c.iso2&&c.iso2!=='-99')(m['#'+c.iso2]=m['#'+c.iso2]||[]).push(c)}
@@ -825,21 +825,33 @@ function draw(lo){
 }
 // rótulos de tamanho fixo na tela. Globo inicial: só nomes de países (+ oceanos pequenos).
 // Com zoom: capitais, depois oceanos/mares, depois as demais cidades (maiores primeiro).
+const CONTLB=[['AMÉRICA','DO NORTE',-100,46],['AMÉRICA','DO SUL',-60,-14],['EUROPA','',15,52],['ÁFRICA','',20,5],['ÁSIA','',90,45],['OCEANIA','',135,-25],['ANTÁRTIDA','',0,-80]];
 function labels(){
   if(!ready)return;
-  const zl=Math.log2(R/R0)+1.7,pl=[];
+  const zl=Math.log2(R/R0)+1.7,pl=[],ZPAIS=Math.log2(3)+1.7;   // ZPAIS: zoom 3x, quando entram países e capitais
   const hit_=(x0,y0,x1,y1)=>{for(const p of pl)if(x0<p[2]&&x1>p[0]&&y0<p[3]&&y1>p[1])return true;pl.push([x0,y0,x1,y1]);return false};
   const prj=v=>[cx+R*(-sl*v[0]+cl*v[1]),cy-R*(-sp*cl*v[0]-sp*sl*v[1]+cp*v[2]),cp*cl*v[0]+cp*sl*v[1]+sp*v[2]];
   ctx.textBaseline='middle';ctx.lineJoin='round';
   // países; os pequenos só aparecem com zoom
   ctx.textAlign='center';
   const arr=sel>=0?[C[sel],...LBS]:LBS;
-  for(const c of arr){if(c.i!==sel&&zl<c.ml)continue;const[px,py,z]=prj(c.lv);if(z<.2)continue;
+  for(const c of arr){if(c.i!==sel&&zl<Math.max(c.ml,ZPAIS))continue;const[px,py,z]=prj(c.lv);if(z<.2)continue;
     if(px<-50||px>W+50||py<-20||py>H+20)continue;
     const f=c.f,w=c.name.length*.58*f,h=f*1.15;
     if(hit_(px-w/2,py-h/2,px+w/2,py+h/2))continue;
     ctx.globalAlpha=Math.min(1,(z-.2)*3);ctx.font='700 '+f+'px Georgia,serif';ctx.lineWidth=f*.38;
     ctx.strokeStyle='rgba(0,0,0,.92)';ctx.strokeText(c.name,px,py);ctx.fillStyle=c.i===sel?'#ff8f3d':'#ffe14d';ctx.fillText(c.name,px,py)}   // países: amarelo vivo com contorno escuro; selecionado: laranja
+  // continentes: só no globo sem zoom (somem sozinhos ao chegar nos 3x, quando entram os países)
+  if(zl<ZPAIS){const ca=Math.min(1,(ZPAIS-zl)*4);ctx.textAlign='center';
+    for(const[t1,t2,lo,la]of CONTLB){const v=[Math.cos(la*RAD)*Math.cos(lo*RAD),Math.cos(la*RAD)*Math.sin(lo*RAD),Math.sin(la*RAD)];
+      const[px,py,z]=prj(v);if(z<.3)continue;if(px<-60||px>W+60||py<-20||py>H+20)continue;
+      const f=13,lh=f*1.2,L=t2?[t1,t2]:[t1],w=Math.max(...L.map(t=>t.length))*.7*f,h=lh*L.length;
+      if(hit_(px-w/2,py-h/2,px+w/2,py+h/2))continue;
+      ctx.globalAlpha=Math.min(1,(z-.3)*3)*ca;ctx.font='700 '+f+'px Georgia,serif';ctx.lineWidth=f*.38;
+      try{ctx.letterSpacing='1.5px'}catch(_){}
+      L.forEach((t,i)=>{const y=py+(i-(L.length-1)/2)*lh;ctx.strokeStyle='rgba(0,0,0,.92)';ctx.strokeText(t,px,y);ctx.fillStyle='#ffe14d';ctx.fillText(t,px,y)});
+      try{ctx.letterSpacing='0px'}catch(_){}}
+    ctx.globalAlpha=1}
   const cities=(capOnly)=>{ctx.textAlign='left';ctx.globalAlpha=1;
     const sa=sel>=0?C[sel].adm:'';for(const c of CITIES){if(zl<c.t-1.3)break;if(zl<c.t-(sa&&c.adm===sa?1.3:0))continue;if(capOnly&&!c.cap)continue;if(!capOnly&&c.cap)continue;
       const[px,py,z]=prj(c.v);if(z<.25)continue;
