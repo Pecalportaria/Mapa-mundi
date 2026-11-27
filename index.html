@@ -837,14 +837,17 @@ const SKY=(()=>{let sd=7;const rnd=()=>{sd=(sd*1664525+1013904223)>>>0;return sd
     ['Júpiter',[100.4542,2.76854e-5,1.303,-1.557e-7,273.8777,1.64505e-5,5.20256,.048498,4.469e-9,19.895,.0830853001],'#ffe2b0'],
     ['Saturno',[113.6634,2.3898e-5,2.4886,-1.081e-7,339.3939,2.97661e-5,9.55475,.055546,-9.499e-9,316.967,.0334442282],'#ead9a0']];
   return{st,mw,dust,gs,GC,sw,sk,cs,bright,pl}})();
+// modo leve automático: se o giro cair abaixo de ~26 quadros/s (celular mais fraco), o céu usa bem menos pontos
+let LITE=false,_st=0,_sn=0,_ss=0;
 function sky(lo){
+  {const n=performance.now();if(lo&&_st&&n-_st<200){_ss+=n-_st;if(++_sn>=40){if(_ss/_sn>38)LITE=true;_sn=0;_ss=0}}_st=n}
   const d=Date.now()/864e5-10957.5,g=((280.46061837+360.98564736629*d)%360)*RAD,cg=Math.cos(g),sg=Math.sin(g),K=Math.hypot(W,H)*.5;
   const PJ=v=>{const a=v[0]*cg+v[1]*sg,b=-v[0]*sg+v[1]*cg,u=-sl*a+cl*b,w=-sp*cl*a-sp*sl*b+cp*v[2];return[cx+K*(u*cr-w*sr),cy-K*(u*sr+w*cr),cp*cl*a+cp*sl*b+sp*v[2]]};
   const E=23.4393*RAD,ce=Math.cos(E),se=Math.sin(E),ec=(x,y,z)=>{const n=Math.hypot(x,y,z);return[x/n,(y*ce-z*se)/n,(y*se+z*ce)/n]};
   const M=(357.529+.98560028*d)*RAD,lam=(280.459+.98564736*d)*RAD+(1.915*Math.sin(M)+.02*Math.sin(2*M))*RAD,Rs=1.00014-.01671*Math.cos(M);
-  const stp=lo?2:1,rs=K*.1;ctx.globalAlpha=.04*stp;
+  const stp=LITE?3:lo?2:1,rs=K*.1;ctx.globalAlpha=.04*stp;
   for(let i=0;i<SKY.mw.length;i+=stp){const q=PJ(SKY.mw[i]);if(q[2]<0)ctx.drawImage(SKY.sw,q[0]-rs,q[1]-rs,2*rs,2*rs)}
-  ctx.globalAlpha=.1*stp;for(let i=0;i<SKY.dust.length;i+=stp){const q=PJ(SKY.dust[i]);if(q[2]<0)ctx.drawImage(SKY.sk,q[0]-rs*.8,q[1]-rs*.8,1.6*rs,1.6*rs)}
+  ctx.globalAlpha=.1*stp;for(let i=0;i<(LITE?0:SKY.dust.length);i+=stp){const q=PJ(SKY.dust[i]);if(q[2]<0)ctx.drawImage(SKY.sk,q[0]-rs*.8,q[1]-rs*.8,1.6*rs,1.6*rs)}
   ctx.globalAlpha=1;
   for(let c=0;c<6;c++){ctx.fillStyle=`rgba(${SKY.GC[c>>1]},${c&1?.95:.55})`;const A=SKY.gs[c];for(let i=0;i<A.length;i+=stp){const q=PJ(A[i]);if(q[2]<0)ctx.fillRect(q[0],q[1],A[i][3],A[i][3])}}
   for(const t of SKY.st){const q=PJ(t);if(q[2]<0){ctx.fillStyle=t[5];ctx.fillRect(q[0],q[1],t[4],t[4])}}
