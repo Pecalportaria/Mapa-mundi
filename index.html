@@ -41,8 +41,8 @@ button.on{background:var(--gold);border-color:#c79a00}
 <div id="at">Imagens: Esri, Maxar, Earthstar Geographics</div>
 <div id="ld">Carregando imagem de satélite…</div>
 <div id="hint">Arraste para girar · pince para zoom · toque num país</div>
-<div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd></dl><button id="obtn" type="button">Formação do povo: da pré-história a hoje ›</button><a id="gmc" class="lk s">Abrir país no Google Earth ›</a></div>
-<div id="cs" role="status"><button id="cx" aria-label="Fechar">✕</button><h2 id="cn"></h2><p id="cd"></p><a id="gm" class="lk">Abrir no Google Earth ›</a></div>
+<div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd></dl><button id="obtn" type="button">Formação do povo: da pré-história a hoje ›</button><a id="gmc" class="lk s">Abrir país no Google Earth ›</a><a id="ggc" class="lk s">Abrir país no app de mapas ›</a></div>
+<div id="cs" role="status"><button id="cx" aria-label="Fechar">✕</button><h2 id="cn"></h2><p id="cd"></p><a id="gm" class="lk">Abrir no Google Earth ›</a><a id="gg" class="lk s">Abrir no app de mapas ›</a></div>
 <div id="om" role="dialog" aria-modal="true" aria-labelledby="ot" hidden><div id="oh"><button id="oc" type="button" aria-label="Voltar">‹</button><h2 id="ot"></h2></div><div id="ob"></div></div>
 <script>
 // Atlas Globo · Satélite — globo 3D (Canvas 2D) com textura NASA Blue Marble embutida.
@@ -1009,7 +1009,7 @@ let curI=-1;const CP=[];
 function closeCity(){$('cs').classList.remove('v');if(sel<0)document.body.classList.remove('sv')}
 function openCity(c){pick(-1);$('cn').textContent=c.name;const pc=C.find(x=>x.adm===c.adm);
   $('cd').textContent=[pc?pc.name:'',c.cap?'capital':'',c.pop?fmt(c.pop)+' hab.':''].filter(Boolean).join(' · ');
-  $('gm').href='https://earth.google.com/web/@'+c.lat+','+c.lon+',0a,15000d,35y,0h,0t,0r';
+  $('gm').href='https://earth.google.com/web/@'+c.lat+','+c.lon+',0a,15000d,35y,0h,0t,0r';$('gg').href='geo:'+c.lat+','+c.lon+'?q='+c.lat+','+c.lon+'('+encodeURIComponent(c.name)+')';
   $('hint').style.display='none';$('cs').classList.add('v');document.body.style.setProperty('--shh',$('cs').offsetHeight+'px');document.body.classList.add('sv')}
 function nearCity(px,py){let b=null,bd=1e9;for(const[x,y,c,w]of CP){const dx=px-x,dy=py-y;if(dx>=-16&&dx<=10+w&&Math.abs(dy)<=14){const d=Math.abs(dx)+Math.abs(dy);if(d<bd){bd=d;b=c}}}return b}
 $('cx').onclick=closeCity;
@@ -1030,7 +1030,7 @@ function pick(i,go){
   $('pop').textContent=c.pop?fmt(c.pop)+' hab.':'—';$('ar').textContent=c.area?fmt(Math.round(c.area))+' km²':'—';
   $('de').textContent=c.area>0&&c.pop?fmt(Math.round(c.pop/c.area*10)/10)+' hab./km²':'—';
   const inf=INFO[c.adm]||INFO[c.iso]||{};$('lg').textContent=inf.l||'—';$('og').textContent=inf.o||'—';$('sh').scrollTop=0;
-  $('gmc').href='https://earth.google.com/web/@'+c.ctr[1]+','+c.ctr[0]+',0a,4000000d,35y,0h,0t,0r';$('sh').classList.add('v');$('hint').style.display='none';document.body.style.setProperty('--shh',$('sh').offsetHeight+'px');document.body.classList.add('sv');
+  $('gmc').href='https://earth.google.com/web/@'+c.ctr[1]+','+c.ctr[0]+',0a,4000000d,35y,0h,0t,0r';$('ggc').href='geo:'+c.ctr[1]+','+c.ctr[0]+'?z=5';$('sh').classList.add('v');$('hint').style.display='none';document.body.style.setProperty('--shh',$('sh').offsetHeight+'px');document.body.classList.add('sv');
   if(go&&flat){flyFlat(c.ctr[0],c.ctr[1],fitS(c))}else if(go){const a=Math.max(c.bw*Math.cos(c.ctr[1]*RAD),c.bh,1);flyTo(c.ctr[0],c.ctr[1],clampR(.5*Math.min(W,H*.62)/(a*RAD)))}else req()}
 function hit(px,py){const x=(px-cx)/R,y=(cy-py)/R,d=x*x+y*y;if(d>1)return-1;setView();
   const[lo,la]=unproj(x,y,Math.sqrt(1-d));
