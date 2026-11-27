@@ -41,8 +41,8 @@ button.on{background:var(--gold);border-color:#c79a00}
 <div id="at">Imagens: Esri, Maxar, Earthstar Geographics</div>
 <div id="ld">Carregando imagem de satélite…</div>
 <div id="hint">Arraste para girar · pince para zoom · toque num país</div>
-<div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd></dl><button id="obtn" type="button">Formação do povo: da pré-história a hoje ›</button><a id="gmc" class="lk s" target="_blank" rel="noopener">Abrir país no Google Earth ›</a></div>
-<div id="cs" role="status"><button id="cx" aria-label="Fechar">✕</button><h2 id="cn"></h2><p id="cd"></p><a id="gm" class="lk" target="_blank" rel="noopener">Abrir no Google Earth ›</a></div>
+<div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd></dl><button id="obtn" type="button">Formação do povo: da pré-história a hoje ›</button><a id="gmc" class="lk s">Abrir país no Google Earth ›</a></div>
+<div id="cs" role="status"><button id="cx" aria-label="Fechar">✕</button><h2 id="cn"></h2><p id="cd"></p><a id="gm" class="lk">Abrir no Google Earth ›</a></div>
 <div id="om" role="dialog" aria-modal="true" aria-labelledby="ot" hidden><div id="oh"><button id="oc" type="button" aria-label="Voltar">‹</button><h2 id="ot"></h2></div><div id="ob"></div></div>
 <script>
 // Atlas Globo · Satélite — globo 3D (Canvas 2D) com textura NASA Blue Marble embutida.
@@ -995,7 +995,7 @@ function frame(t){raf=0;const dt=last?Math.min(50,t-last):16;last=t;let more=fal
   if(flat){if(ff){const k=Math.min(1,(t-ff.t0)/ff.dur),e=1-Math.pow(1-k,3);mcx=ff.x0+(ff.x1-ff.x0)*e;mcy=ff.y0+(ff.y1-ff.y0)*e;S=Math.exp(Math.log(ff.s0)+(Math.log(ff.s1)-Math.log(ff.s0))*e);if(k>=1)ff=null;more=true}clampFlat();drawFlat();if(more)req();else last=0;return}
   if(fly){const k=Math.min(1,(t-fly.t0)/fly.dur),e=1-Math.pow(1-k,3);lon0=fly.l0+fly.dl*e;lat0=fly.p0+(fly.tp-fly.p0)*e;
     R=Math.exp(Math.log(fly.R0)+(Math.log(fly.tR)-Math.log(fly.R0))*e);if(k>=1)fly=null;more=true}
-  else if(inertia){lon0-=vl*dt/16;lat0+=vp*dt/16;const f=Math.pow(.94,dt/16);vl*=f;vp*=f;if(Math.abs(vl)+Math.abs(vp)<.02)inertia=false;more=inertia}
+  else if(inertia){lon0-=vl*dt/16;lat0+=vp*dt/16;const f=Math.pow(.86,dt/16);vl*=f;vp*=f;if(Math.abs(vl)+Math.abs(vp)<.02)inertia=false;more=inertia}
   // a Terra gira de oeste para leste: a superfície passa da esquerda para a direita, então a longitude central diminui
   else if(ready&&auto&&sel<0&&!P.size){lon0-=4*dt/1000;more=true}
   lat0=Math.max(-85,Math.min(85,lat0));lon0=((lon0+540)%360)-180;
@@ -1044,11 +1044,11 @@ cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catc
 cv.addEventListener('pointermove',e=>{const p=P.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
   if(flat){if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){mcx-=dx/S;mcy+=dy/S;clampFlat();req()}}
     else if(P.size==2){const d=dist();if(pd){const[a,b]=[...P.values()];zoomFlat(d/pd,(a.x+b.x)/2,(a.y+b.y)/2)}pd=d}return}
-  if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const k=57.3/R,a=dx*k,b=dy*k;lon0-=a;lat0+=b;vl=vl*.5+a*.5;vp=vp*.5+b*.5;lmt=Date.now();req()}}
+  if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const zg=1-.4*Math.min(1,Math.max(0,Math.log2(R/R0)/5)),k=57.3/R*zg,a=dx*k,b=dy*k;lon0-=a;lat0+=b;vl=vl*.5+a*.5;vp=vp*.5+b*.5;lmt=Date.now();req()}}
   else if(P.size==2){const d=dist();if(pd){R=clampR(R*d/pd);req()}pd=d}});
 cv.addEventListener('pointerup',e=>{
   if(P.size==1&&moved<=8&&Date.now()-t0<500){const cc=nearCity(e.clientX,e.clientY);if(cc)openCity(cc);else pick(flat?hitFlat(e.clientX,e.clientY):hit(e.clientX,e.clientY),true)}
-  else if(P.size==1&&moved>8&&Date.now()-lmt<80&&Math.abs(vl)+Math.abs(vp)>.3){inertia=true;req()}
+  else if(P.size==1&&moved>8&&R<=R0*6&&Date.now()-lmt<80&&Math.abs(vl)+Math.abs(vp)>.3){vl*=.6;vp*=.6;inertia=true;req()}
   P.delete(e.pointerId);moved=99;pd=0;req()});
 cv.addEventListener('pointercancel',e=>{P.delete(e.pointerId)});
 cv.addEventListener('wheel',e=>{e.preventDefault();auto=false;if(flat){zoomFlat(e.deltaY>0?1/1.15:1.15,e.clientX,e.clientY);return}R=clampR(R*(e.deltaY>0?1/1.15:1.15));req()},{passive:false});
