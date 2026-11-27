@@ -812,9 +812,15 @@ function lineRing(r){if(r.rad*R<.7||!vis(r))return;const q_=lvP(r),n=q_.n;rot(q_
 const SKY=(()=>{let sd=7;const rnd=()=>{sd=(sd*1664525+1013904223)>>>0;return sd/4294967296},eq=(ra,de)=>[Math.cos(de)*Math.cos(ra),Math.cos(de)*Math.sin(ra),Math.sin(de)];
   const st=[],mw=[],dust=[],dG=27.128*RAD,aG=192.859*RAD,lN=122.932*RAD;
   const TINT=['255,255,255','255,255,255','255,255,255','185,205,255','255,226,190','255,190,165'];
-  for(let i=0;i<650;i++){const z=rnd()*2-1,a=rnd()*TAU,r=Math.sqrt(1-z*z),al=.22+.6*rnd()*rnd(),big=rnd()<.06;st.push([r*Math.cos(a),r*Math.sin(a),z,al,big?2:1,`rgba(${TINT[(rnd()*6)|0]},${big?Math.min(1,al+.3):al})`])}
+  for(let i=0;i<400;i++){const z=rnd()*2-1,a=rnd()*TAU,r=Math.sqrt(1-z*z),al=.22+.6*rnd()*rnd(),big=rnd()<.06;st.push([r*Math.cos(a),r*Math.sin(a),z,al,big?2:1,`rgba(${TINT[(rnd()*6)|0]},${big?Math.min(1,al+.3):al})`])}
   const gal=(l,b)=>{const q=lN-l,cb=Math.cos(b);return eq(aG+Math.atan2(cb*Math.sin(q),Math.sin(b)*Math.cos(dG)-cb*Math.sin(dG)*Math.cos(q)),Math.asin(Math.sin(b)*Math.sin(dG)+cb*Math.cos(dG)*Math.cos(q)))};
   for(let i=0;i<650;i++)mw.push(gal(rnd()<.5?(rnd()+rnd()-1)*Math.PI:(rnd()*2-1)*Math.PI,(rnd()+rnd()+rnd()-1.5)*.2));
+  for(let i=0;i<160;i++)mw.push(gal((rnd()+rnd()+rnd()-1.5)*.5,(rnd()+rnd()+rnd()-1.5)*.12));   // bulbo mais brilhante no centro da galáxia
+  const gs=[[],[],[],[],[],[]],GC=['235,242,255','175,205,255','255,236,205'];   // estrelinhas luminosas ao longo da faixa
+  // estrelas por todo o céu; um pouco mais densas na faixa da Via Láctea e mais ainda perto do centro da galáxia
+  for(let n=0;n<2600;){const l=(rnd()*2-1)*Math.PI,b=Math.asin(rnd()*2-1),gc=Math.cos(b)*Math.cos(l);
+    if(rnd()>=.5+.3*Math.exp(-b*b/.1)+.45*Math.pow(Math.max(0,gc),4))continue;
+    const v=gal(l,b);v.push(rnd()<.1?1.8:1.1);gs[((rnd()*3)|0)*2+(rnd()<.3?1:0)].push(v);n++}
   for(let i=0;i<220;i++)dust.push(gal((rnd()*2-1)*Math.PI,(rnd()+rnd()-1)*.1));
   const spr=c=>{const k=document.createElement('canvas');k.width=k.height=64;const x=k.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,`rgba(${c},1)`);g.addColorStop(1,`rgba(${c},0)`);x.fillStyle=g;x.fillRect(0,0,64,64);return k},sw=spr('210,182,155'),sk=spr('0,0,0');
   const pt=t=>t.split(' ').map(x=>{const[a,b]=x.split(',');return eq(a*15*RAD,b*RAD)});
@@ -829,7 +835,7 @@ const SKY=(()=>{let sd=7;const rnd=()=>{sd=(sd*1664525+1013904223)>>>0;return sd
     ['Marte',[49.5574,2.11081e-5,1.8497,-1.78e-8,286.5016,2.92961e-5,1.523688,.093405,2.516e-9,18.6021,.5240207766],'#ff8a5c'],
     ['Júpiter',[100.4542,2.76854e-5,1.303,-1.557e-7,273.8777,1.64505e-5,5.20256,.048498,4.469e-9,19.895,.0830853001],'#ffe2b0'],
     ['Saturno',[113.6634,2.3898e-5,2.4886,-1.081e-7,339.3939,2.97661e-5,9.55475,.055546,-9.499e-9,316.967,.0334442282],'#ead9a0']];
-  return{st,mw,dust,sw,sk,cs,bright,pl}})();
+  return{st,mw,dust,gs,GC,sw,sk,cs,bright,pl}})();
 function sky(lo){
   const d=Date.now()/864e5-10957.5,g=((280.46061837+360.98564736629*d)%360)*RAD,cg=Math.cos(g),sg=Math.sin(g),K=Math.hypot(W,H)*.5;
   const PJ=v=>{const a=v[0]*cg+v[1]*sg,b=-v[0]*sg+v[1]*cg,u=-sl*a+cl*b,w=-sp*cl*a-sp*sl*b+cp*v[2];return[cx+K*(u*cr-w*sr),cy-K*(u*sr+w*cr),cp*cl*a+cp*sl*b+sp*v[2]]};
@@ -839,6 +845,7 @@ function sky(lo){
   for(let i=0;i<SKY.mw.length;i+=stp){const q=PJ(SKY.mw[i]);if(q[2]<0)ctx.drawImage(SKY.sw,q[0]-rs,q[1]-rs,2*rs,2*rs)}
   ctx.globalAlpha=.1*stp;for(let i=0;i<SKY.dust.length;i+=stp){const q=PJ(SKY.dust[i]);if(q[2]<0)ctx.drawImage(SKY.sk,q[0]-rs*.8,q[1]-rs*.8,1.6*rs,1.6*rs)}
   ctx.globalAlpha=1;
+  for(let c=0;c<6;c++){ctx.fillStyle=`rgba(${SKY.GC[c>>1]},${c&1?.95:.55})`;const A=SKY.gs[c];for(let i=0;i<A.length;i+=stp){const q=PJ(A[i]);if(q[2]<0)ctx.fillRect(q[0],q[1],A[i][3],A[i][3])}}
   for(const t of SKY.st){const q=PJ(t);if(q[2]<0){ctx.fillStyle=t[5];ctx.fillRect(q[0],q[1],t[4],t[4])}}
   ctx.fillStyle='#fff';for(const v of SKY.bright){const q=PJ(v);if(q[2]<0){ctx.beginPath();ctx.arc(q[0],q[1],1.6,0,TAU);ctx.fill()}}
   ctx.font='11px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=.8;
