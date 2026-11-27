@@ -1,7 +1,7 @@
 // Service Worker do Atlas Globo: cache offline do HTML (que já contém a textura Blue Marble),
 // do manifest, dos ícones e dos arquivos do Natural Earth (países 10m e cidades).
 // Ao trocar o index.html ou um arquivo de dados, aumente o número da versão abaixo.
-const V = 'atlas-globo-v7';
+const V = 'atlas-globo-v8';   // v8: renova o cache (dados antigos eram guardados para sempre) e a página passa a buscar a versão nova primeiro
 const TC = 'atlas-tiles-v1';          // ladrilhos de satélite já vistos (ficam disponíveis offline)
 const TILE_HOST = 'server.arcgisonline.com', TILE_MAX = 2000;
 let tilePuts = 0;
@@ -31,7 +31,8 @@ self.addEventListener('activate', e => {
   })());
 });
 
-// cache primeiro (abre na hora, mesmo sem internet).
+// A página (index.html) busca a rede primeiro (até 4 s) e só usa o cache se estiver sem internet ou lento: assim atualizações chegam na hora.
+// Os demais arquivos: cache primeiro (abre na hora, mesmo sem internet).
 // Páginas e ícones atualizam em segundo plano quando há rede; os arquivos de dados (o Paises.json de 10m
 // tem ~24 MB) ficam só no cache e não são baixados de novo a cada abertura.
 self.addEventListener('fetch', e => {
@@ -59,6 +60,14 @@ self.addEventListener('fetch', e => {
   if (r.method !== 'GET' || u.origin !== location.origin) return;
   e.respondWith((async () => {
     const c = await caches.open(V);
+    if (r.mode === 'navigate' || u.pathname.endsWith('/index.html')) {
+      try {
+        const res = await Promise.race([fetch(r), new Promise((_, no) => setTimeout(no, 4000))]);
+        if (res && res.ok && res.status === 200) { c.put(r, res.clone()).catch(() => {}); return res; }
+      } catch (_) {}
+      const old = (await c.match(r, {ignoreSearch: true})) || (await c.match('./index.html'));
+      if (old) return old;
+    }
     const hit = await c.match(r, {ignoreSearch: true});
     const heavy = DATA_PATHS.has(u.pathname);
     if (hit && heavy) return hit;

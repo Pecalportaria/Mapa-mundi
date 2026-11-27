@@ -41,7 +41,7 @@ button.on{background:var(--gold);border-color:#c79a00}
 <div id="at">Imagens: Esri, Maxar, Earthstar Geographics</div>
 <div id="ld">Carregando imagem de satélite…</div>
 <div id="hint">Arraste para girar · pince ou toque duplo para zoom · toque num país</div>
-<div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd></dl><button id="obtn" type="button">Formação do povo: da pré-história a hoje ›</button><a id="ggc" class="lk s">Abrir país no Google Maps ›</a><a id="gmc" class="lk s">Abrir país no Google Earth ›</a></div>
+<div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd><dt>Fonte dos dados</dt><dd id="src" style="font-size:11px;opacity:.7"></dd></dl><button id="obtn" type="button">Formação do povo: da pré-história a hoje ›</button><a id="ggc" class="lk s">Abrir país no Google Maps ›</a><a id="gmc" class="lk s">Abrir país no Google Earth ›</a></div>
 <div id="cs" role="status"><button id="cx" aria-label="Fechar">✕</button><h2 id="cn"></h2><p id="cd"></p><a id="gg" class="lk">Abrir no Google Maps ›</a><a id="gm" class="lk s">Abrir no Google Earth ›</a></div>
 <div id="om" role="dialog" aria-modal="true" aria-labelledby="ot" hidden><div id="oh"><button id="oc" type="button" aria-label="Voltar">‹</button><h2 id="ot"></h2></div><div id="ob"></div></div>
 <script>
@@ -593,7 +593,8 @@ let C=[],ORDER=[],LBS=[],CITIES=[],TX=new Float32Array(1),TY=TX,TZ=TX;
 const STARS=[];{let s=7;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;for(let i=0;i<90;i++)STARS.push([rnd(),rnd(),.3+rnd()*.6,rnd()<.2?1.6:1])}
 
 // ---- leitura dos arquivos locais (offline: vêm do cache do Service Worker)
-async function getJSON(list){for(const f of list){try{const r=await fetch('./'+f);if(r.ok)return await r.json()}catch(e){}}throw new Error(list[0])}
+const DSRC={};
+async function getJSON(list){for(const f of list){try{const r=await fetch('./'+f);if(r.ok){const j=await r.json();(list===FILES_C?DSRC.c=f:DSRC.p=f);return j}}catch(e){}}throw new Error(list[0])}
 const pg=p=>{const m={};for(const k in (p||{}))m[k.toLowerCase()]=p[k];return k=>m[k]};
 const num=v=>{v=Number(v);return isFinite(v)?v:NaN};
 
@@ -1102,7 +1103,7 @@ addEventListener('popstate',omClose);
 function pick(i,go){
   closeCity();sel=i;curI=i;if(i<0){omClose();$('hint').style.display='';$('sh').classList.remove('v');document.body.classList.remove('sv');req();return}
   const c=C[i];$('n').textContent=c.name;$('cap').textContent=c.cap||'—';$('ct').textContent=c.cont;
-  $('pop').textContent=c.pop?fmt(c.pop)+' hab.':'—';$('ar').textContent=c.area?fmt(Math.round(c.area))+' km²':'—';
+  $('src').textContent=(DSRC.c||'?')+' · '+(DSRC.p||'?')+' — '+C.length+' países, '+CITIES.length+' cidades';$('pop').textContent=c.pop?fmt(c.pop)+' hab.':'—';$('ar').textContent=c.area?fmt(Math.round(c.area))+' km²':'—';
   $('de').textContent=c.area>0&&c.pop?fmt(Math.round(c.pop/c.area*10)/10)+' hab./km²':'—';
   const inf=INFO[c.adm]||INFO[c.iso]||{};$('lg').textContent=inf.l||'—';$('og').textContent=inf.o||'—';$('sh').scrollTop=0;
   $('gmc').href='https://earth.google.com/web/@'+c.ctr[1]+','+c.ctr[0]+',0a,4000000d,35y,0h,0t,0r';$('ggc').href='geo:'+c.ctr[1]+','+c.ctr[0]+'?z=5';$('sh').classList.add('v');$('hint').style.display='none';document.body.style.setProperty('--shh',$('sh').offsetHeight+'px');document.body.classList.add('sv');
