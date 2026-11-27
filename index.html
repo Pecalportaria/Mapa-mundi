@@ -1070,7 +1070,8 @@ function setMode(f){
 
 // ---- animação (só roda quando preciso)
 function req(){if(!raf)raf=requestAnimationFrame(frame)}
-function frame(t){raf=0;const dt=last?Math.min(50,t-last):16;last=t;let more=false;
+function frame(t){raf=0;if(last&&t-last<15){req();return}   // limita a ~60 quadros/s: em telas de 90/120 Hz o ritmo fica regular em vez de falhar
+  const dt=last?Math.min(50,t-last):16;last=t;let more=false;
   if(flat){if(ff){const k=Math.min(1,(t-ff.t0)/ff.dur),e=1-Math.pow(1-k,3);mcx=ff.x0+(ff.x1-ff.x0)*e;mcy=ff.y0+(ff.y1-ff.y0)*e;S=Math.exp(Math.log(ff.s0)+(Math.log(ff.s1)-Math.log(ff.s0))*e);if(k>=1)ff=null;more=true}clampFlat();drawFlat();if(more)req();else last=0;return}
   if(fly){const k=Math.min(1,(t-fly.t0)/fly.dur),e=1-Math.pow(1-k,3);lon0=fly.l0+fly.dl*e;lat0=fly.p0+(fly.tp-fly.p0)*e;
     R=Math.exp(Math.log(fly.R0)+(Math.log(fly.tR)-Math.log(fly.R0))*e);if(!fly.kr)rl=fly.r0*(1-e);if(k>=1)fly=null;more=true}
