@@ -40,7 +40,7 @@ button.on{background:var(--gold);border-color:#c79a00}
 <div id="z"><button id="zi" aria-label="Aproximar">+</button><button id="zo" aria-label="Afastar">−</button><button id="zr" aria-label="Globo inteiro">⌂</button><button id="zb" class="on" aria-label="Fronteiras" aria-pressed="true">▦</button><button id="zs" class="on" aria-label="Satélite online" aria-pressed="true">🛰</button><button id="zm" aria-label="Planisfério político">🗺</button></div>
 <div id="at">Imagens: Esri, Maxar, Earthstar Geographics</div>
 <div id="ld">Carregando imagem de satélite…</div>
-<div id="hint">Arraste para girar · pince para zoom · toque num país</div>
+<div id="hint">Arraste para girar · pince ou toque duplo para zoom · toque num país</div>
 <div id="sh" role="status"><button id="x" aria-label="Fechar">✕</button><h2 id="n"></h2><dl><dt>Capital</dt><dd id="cap"></dd><dt>Continente</dt><dd id="ct"></dd><dt>População</dt><dd id="pop"></dd><dt>Área</dt><dd id="ar"></dd><dt>Densidade</dt><dd id="de"></dd><dt>Idioma oficial</dt><dd id="lg"></dd><dt>Origem do povo</dt><dd id="og"></dd></dl><button id="obtn" type="button">Formação do povo: da pré-história a hoje ›</button><a id="ggc" class="lk s">Abrir país no Google Maps ›</a><a id="gmc" class="lk s">Abrir país no Google Earth ›</a></div>
 <div id="cs" role="status"><button id="cx" aria-label="Fechar">✕</button><h2 id="cn"></h2><p id="cd"></p><a id="gg" class="lk">Abrir no Google Maps ›</a><a id="gm" class="lk s">Abrir no Google Earth ›</a></div>
 <div id="om" role="dialog" aria-modal="true" aria-labelledby="ot" hidden><div id="oh"><button id="oc" type="button" aria-label="Voltar">‹</button><h2 id="ot"></h2></div><div id="ob"></div></div>
@@ -588,7 +588,7 @@ const RAD=Math.PI/180,TAU=Math.PI*2;
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const fmt=n=>n.toLocaleString('pt-BR');
 let W,H,dpr,cx,cy,R0,R=1,lon0=-50,lat0=15,auto=true,sel=-1,fly=null,vl=0,vp=0,inertia=false,raf=0,last=0;
-let sl,cl,sp,cp;
+let sl,cl,sp,cp,rl=0,cr=1,sr=0;   // rl: giro do globo em torno do eixo de visão (rad)
 let C=[],ORDER=[],LBS=[],CITIES=[],TX=new Float32Array(1),TY=TX,TZ=TX;
 const STARS=[];{let s=7;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;for(let i=0;i<90;i++)STARS.push([rnd(),rnd(),.3+rnd()*.6,rnd()<.2?1.6:1])}
 
@@ -662,10 +662,10 @@ function fillSearch(){const dl=$('dl');dl.textContent='';const seen=new Set();
   for(const n of [...C.map(c=>c.name),...CITIES.map(c=>c.name)]){if(seen.has(n))continue;seen.add(n);const o=document.createElement('option');o.value=n;dl.appendChild(o)}}
 
 // ---- câmera
-function setView(){const l=lon0*RAD,p=lat0*RAD;sl=Math.sin(l);cl=Math.cos(l);sp=Math.sin(p);cp=Math.cos(p)}
+function setView(){const l=lon0*RAD,p=lat0*RAD;sl=Math.sin(l);cl=Math.cos(l);sp=Math.sin(p);cp=Math.cos(p);cr=Math.cos(rl);sr=Math.sin(rl)}
 function rot(P,n){for(let i=0;i<n;i++){const a=P[3*i],b=P[3*i+1],c=P[3*i+2];
-  TX[i]=-sl*a+cl*b;TY[i]=-sp*cl*a-sp*sl*b+cp*c;TZ[i]=cp*cl*a+cp*sl*b+sp*c}}
-function unproj(x,y,z){const X=-sl*x-sp*cl*y+cp*cl*z,Y=cl*x-sp*sl*y+cp*sl*z,Z=cp*y+sp*z;return[Math.atan2(Y,X)/RAD,Math.asin(Math.max(-1,Math.min(1,Z)))/RAD]}
+  const u=-sl*a+cl*b,w=-sp*cl*a-sp*sl*b+cp*c;TX[i]=u*cr-w*sr;TY[i]=u*sr+w*cr;TZ[i]=cp*cl*a+cp*sl*b+sp*c}}
+function unproj(x,y,z){const x0=x*cr+y*sr;y=-x*sr+y*cr;x=x0;const X=-sl*x-sp*cl*y+cp*cl*z,Y=cl*x-sp*sl*y+cp*sl*z,Z=cp*y+sp*z;return[Math.atan2(Y,X)/RAD,Math.asin(Math.max(-1,Math.min(1,Z)))/RAD]}
 function inside(r,x,y){let c=false;const lo=r.lo,la=r.la;for(let i=0,j=lo.length-1;i<lo.length;j=i++){
   if((la[i]>y)!==(la[j]>y)&&x<(lo[j]-lo[i])*(y-la[i])/(la[j]-la[i])+lo[i])c=!c}return c}
 const ang=(x,y)=>Math.atan2(-y,x);
@@ -731,7 +731,7 @@ function* genTex(){
   for(let t=0,p=0;t<N;t++,p+=4){
     const r=d[p],g=d[p+1],b=d[p+2];
     const w=cl01((b-r-8)/36)*cl01((b*1.15-g+4)/14);
-    if(w>0){const k=cl01((b-45)/95),tr=26+52*k,tg=92+92*k,tb=168+48*k,m=w*.92;
+    if(w>0){const k=cl01((b-35)/120),tr=38+62*k,tg=84+82*k,tb=162+52*k,m=w*.92;
       d[p]=r+(tr-r)*m;d[p+1]=g+(tg-g)*m;d[p+2]=b+(tb-b)*m}
     d[p+3]=Math.round(w*255);
     if((t&262143)===0)yield 15+80*t/N}
@@ -758,7 +758,7 @@ function loadT(z,x,y,key){const im=new Image();im.crossOrigin='anonymous';
     x2.drawImage(im,0,0,256,256);const d=x2.getImageData(0,0,256,256).data;
     // mesmo clareamento do oceano da textura base, para as duas imagens combinarem
     for(let p=0;p<d.length;p+=4){const r=d[p],g=d[p+1],b=d[p+2],w=cl01((b-r-8)/36)*cl01((b*1.15-g+4)/14);
-      if(w>0){const k=cl01((b-45)/95),m=w*.92;d[p]=r+(26+52*k-r)*m;d[p+1]=g+(92+92*k-g)*m;d[p+2]=b+(168+48*k-b)*m}}
+      if(w>0){const k=cl01((b-35)/120),m=w*.92;d[p]=r+(38+62*k-r)*m;d[p+1]=g+(84+82*k-g)*m;d[p+2]=b+(162+52*k-b)*m}}
     TILES.set(key,{d});
     if(TILES.size>200){let n=0;for(const[k,t]of TILES){if(t.d){TILES.delete(k);if(++n>=50)break}}}
     fin(true);tileDone()}catch(e){onlineOK=false;fin(false)}};
@@ -780,7 +780,7 @@ function globe(lo){
   for(let j=0;j<oh;j++){const ny=(cy-(y0+(j+.5)*sy))*iR,ny2=ny*ny;
     for(let i=0;i<ow;i++,o+=4){const nx=(x0+(i+.5)*sx-cx)*iR,d=nx*nx+ny2;
       if(d>=1){out[o+3]=0;continue}
-      const nz=Math.sqrt(1-d),X=-sl*nx-sp*cl*ny+cp*cl*nz,Y=cl*nx-sp*sl*ny+cp*sl*nz,Z=cp*ny+sp*nz;
+      const nz=Math.sqrt(1-d),qx=nx*cr+ny*sr,qy=-nx*sr+ny*cr,X=-sl*qx-sp*cl*qy+cp*cl*nz,Y=cl*qx-sp*sl*qy+cp*sl*nz,Z=cp*qy+sp*nz;
       const ln=Math.atan2(Y,X),u=(ln*INV_TAU+.5)*TW-.5,v=(.5-Math.asin(Z>1?1:Z<-1?-1:Z)*INV_PI)*TH-.5;
       let u0=Math.floor(u),v0=Math.floor(v);const fu=u-u0,fv=v-v0;u0=((u0%TW)+TW)%TW;let u1=u0+1;if(u1>=TW)u1=0;
       let v1=v0+1;v0=v0<0?0:v0>=TH?TH-1:v0;v1=v1<0?0:v1>=TH?TH-1:v1;
@@ -793,7 +793,7 @@ function globe(lo){
         if(t.d){smp(t.d,xp-tx*256,yp-ty*256);r+=(TR-r)*kb;g+=(TG-g)*kb;bl+=(TB-bl)*kb;used=true}
         else{for(let k=1;k<=3&&tz-k>=0;k++){const pxp=xp/(1<<k),pyp=yp/(1<<k),ptx=(pxp/256)|0,pty=(pyp/256)|0,pt=TILES.get(((tz-k)*2048+ptx)*2048+pty);
           if(pt&&pt.d){smp(pt.d,pxp-ptx*256,pyp-pty*256);r+=(TR-r)*kb;g+=(TG-g)*kb;bl+=(TB-bl)*kb;used=true;break}}}}
-      const lam=nx*Lx+ny*Ly+nz*Lz;let sh=.74+.44*(lam>0?lam:0)+.06*nz;
+      const lam=nx*Lx+ny*Ly+nz*Lz;let sh=.86+.32*(lam>0?lam:0)+.06*nz;
       // brilho do sol na água
       const rl=2*nz*nx*Lx+2*nz*ny*Ly+(2*nz*nz-1)*Lz;let sp_=0;if(rl>.8&&oc>.01){sp_=Math.pow(rl,60)*70*oc}
       r=r*sh+sp_;g=g*sh+sp_;bl=bl*sh+sp_;
@@ -808,11 +808,62 @@ function lineRing(r){if(r.rad*R<.7||!vis(r))return;const q_=lvP(r),n=q_.n;rot(q_
   for(let i=0;i<n;i++){if(TZ[i]>.02){const px=cx+R*TX[i],py=cy-R*TY[i];
     if(pen){if(Math.abs(px-lx)+Math.abs(py-ly)<.7)continue;ctx.lineTo(px,py)}else{ctx.moveTo(px,py);pen=true}lx=px;ly=py}else pen=false}
   if(pen&&TZ[0]>.02)ctx.lineTo(cx+R*TX[0],cy-R*TY[0])}
+// ---- céu: estrelas, Via Láctea, constelações, Sol, Lua e planetas (posições de agora), girando junto com o globo
+const SKY=(()=>{let sd=7;const rnd=()=>{sd=(sd*1664525+1013904223)>>>0;return sd/4294967296},eq=(ra,de)=>[Math.cos(de)*Math.cos(ra),Math.cos(de)*Math.sin(ra),Math.sin(de)];
+  const st=[],mw=[],dust=[],dG=27.128*RAD,aG=192.859*RAD,lN=122.932*RAD;
+  const TINT=['255,255,255','255,255,255','255,255,255','185,205,255','255,226,190','255,190,165'];
+  for(let i=0;i<650;i++){const z=rnd()*2-1,a=rnd()*TAU,r=Math.sqrt(1-z*z),al=.22+.6*rnd()*rnd(),big=rnd()<.06;st.push([r*Math.cos(a),r*Math.sin(a),z,al,big?2:1,`rgba(${TINT[(rnd()*6)|0]},${big?Math.min(1,al+.3):al})`])}
+  const gal=(l,b)=>{const q=lN-l,cb=Math.cos(b);return eq(aG+Math.atan2(cb*Math.sin(q),Math.sin(b)*Math.cos(dG)-cb*Math.sin(dG)*Math.cos(q)),Math.asin(Math.sin(b)*Math.sin(dG)+cb*Math.cos(dG)*Math.cos(q)))};
+  for(let i=0;i<650;i++)mw.push(gal(rnd()<.5?(rnd()+rnd()-1)*Math.PI:(rnd()*2-1)*Math.PI,(rnd()+rnd()+rnd()-1.5)*.2));
+  for(let i=0;i<220;i++)dust.push(gal((rnd()*2-1)*Math.PI,(rnd()+rnd()-1)*.1));
+  const spr=c=>{const k=document.createElement('canvas');k.width=k.height=64;const x=k.getContext('2d'),g=x.createRadialGradient(32,32,0,32,32,32);g.addColorStop(0,`rgba(${c},1)`);g.addColorStop(1,`rgba(${c},0)`);x.fillStyle=g;x.fillRect(0,0,64,64);return k},sw=spr('210,182,155'),sk=spr('0,0,0');
+  const pt=t=>t.split(' ').map(x=>{const[a,b]=x.split(',');return eq(a*15*RAD,b*RAD)});
+  const cs=[['Órion','5.92,7.41 5.42,6.35 5.68,-1.94 5.6,-1.2 5.53,-0.3 5.8,-9.67 5.24,-8.2','0-1 0-2 1-4 2-3 3-4 2-5 4-6'],
+    ['Cruzeiro do Sul','12.44,-63.1 12.8,-59.69 12.52,-57.11 12.25,-58.75','2-0 3-1'],
+    ['Ursa Maior','11.06,61.75 11.03,56.38 11.9,53.69 12.26,57.03 12.9,55.96 13.4,54.93 13.79,49.31','0-1 1-2 2-3 3-0 3-4 4-5 5-6'],
+    ['Escorpião','16.09,-19.81 16,-22.62 16.49,-26.43 16.84,-34.29 17.62,-42.99 17.56,-37.1','0-1 1-2 2-3 3-4 4-5'],
+    ['Cassiopeia','0.15,59.15 0.68,56.54 0.95,60.72 1.43,60.24 1.91,63.67','0-1 1-2 2-3 3-4']].map(c=>({n:c[0],p:pt(c[1]),l:c[2].split(' ').map(x=>x.split('-'))}));
+  const bright=pt('6.75,-16.72 6.4,-52.7 14.66,-60.83 14.26,19.18 18.62,38.78 19.85,8.87 2.53,89.26 7.65,5.22');
+  const pl=[['Mercúrio',[48.3313,3.24587e-5,7.0047,5e-8,29.1241,1.01444e-5,.387098,.205635,5.59e-10,168.6562,4.0923344368],'#c9c2b8'],
+    ['Vênus',[76.6799,2.4659e-5,3.3946,2.75e-8,54.891,1.38374e-5,.72333,.006773,-1.302e-9,48.0052,1.6021302244],'#fff1c9'],
+    ['Marte',[49.5574,2.11081e-5,1.8497,-1.78e-8,286.5016,2.92961e-5,1.523688,.093405,2.516e-9,18.6021,.5240207766],'#ff8a5c'],
+    ['Júpiter',[100.4542,2.76854e-5,1.303,-1.557e-7,273.8777,1.64505e-5,5.20256,.048498,4.469e-9,19.895,.0830853001],'#ffe2b0'],
+    ['Saturno',[113.6634,2.3898e-5,2.4886,-1.081e-7,339.3939,2.97661e-5,9.55475,.055546,-9.499e-9,316.967,.0334442282],'#ead9a0']];
+  return{st,mw,dust,sw,sk,cs,bright,pl}})();
+function sky(lo){
+  const d=Date.now()/864e5-10957.5,g=((280.46061837+360.98564736629*d)%360)*RAD,cg=Math.cos(g),sg=Math.sin(g),K=Math.hypot(W,H)*.5;
+  const PJ=v=>{const a=v[0]*cg+v[1]*sg,b=-v[0]*sg+v[1]*cg,u=-sl*a+cl*b,w=-sp*cl*a-sp*sl*b+cp*v[2];return[cx+K*(u*cr-w*sr),cy-K*(u*sr+w*cr),cp*cl*a+cp*sl*b+sp*v[2]]};
+  const E=23.4393*RAD,ce=Math.cos(E),se=Math.sin(E),ec=(x,y,z)=>{const n=Math.hypot(x,y,z);return[x/n,(y*ce-z*se)/n,(y*se+z*ce)/n]};
+  const M=(357.529+.98560028*d)*RAD,lam=(280.459+.98564736*d)*RAD+(1.915*Math.sin(M)+.02*Math.sin(2*M))*RAD,Rs=1.00014-.01671*Math.cos(M);
+  const stp=lo?2:1,rs=K*.1;ctx.globalAlpha=.04*stp;
+  for(let i=0;i<SKY.mw.length;i+=stp){const q=PJ(SKY.mw[i]);if(q[2]<0)ctx.drawImage(SKY.sw,q[0]-rs,q[1]-rs,2*rs,2*rs)}
+  ctx.globalAlpha=.1*stp;for(let i=0;i<SKY.dust.length;i+=stp){const q=PJ(SKY.dust[i]);if(q[2]<0)ctx.drawImage(SKY.sk,q[0]-rs*.8,q[1]-rs*.8,1.6*rs,1.6*rs)}
+  ctx.globalAlpha=1;
+  for(const t of SKY.st){const q=PJ(t);if(q[2]<0){ctx.fillStyle=t[5];ctx.fillRect(q[0],q[1],t[4],t[4])}}
+  ctx.fillStyle='#fff';for(const v of SKY.bright){const q=PJ(v);if(q[2]<0){ctx.beginPath();ctx.arc(q[0],q[1],1.6,0,TAU);ctx.fill()}}
+  ctx.font='11px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=.8;
+  for(const c of SKY.cs){const P=c.p.map(PJ);ctx.strokeStyle='rgba(150,190,255,.4)';ctx.beginPath();
+    for(const[a,b]of c.l)if(P[a][2]<0&&P[b][2]<0){ctx.moveTo(P[a][0],P[a][1]);ctx.lineTo(P[b][0],P[b][1])}ctx.stroke();
+    ctx.fillStyle='#fff';let mx=0,my=0,ok=0;for(const q of P)if(q[2]<0){ctx.beginPath();ctx.arc(q[0],q[1],1.7,0,TAU);ctx.fill();mx+=q[0];my+=q[1];ok++}
+    if(ok>=P.length-1){ctx.fillStyle='rgba(180,208,255,.7)';ctx.fillText(c.n,mx/ok,my/ok+16)}}
+  const body=(v,col,r,nm,glow)=>{const q=PJ(v);if(q[2]>=0)return;
+    if(glow){const gr=ctx.createRadialGradient(q[0],q[1],0,q[0],q[1],r*4);gr.addColorStop(0,'rgba(255,240,190,.9)');gr.addColorStop(.25,'rgba(255,214,120,.35)');gr.addColorStop(1,'rgba(255,214,120,0)');ctx.fillStyle=gr;ctx.beginPath();ctx.arc(q[0],q[1],r*4,0,TAU);ctx.fill()}
+    ctx.fillStyle=col;ctx.beginPath();ctx.arc(q[0],q[1],r,0,TAU);ctx.fill();ctx.fillStyle='rgba(255,255,255,.8)';ctx.fillText(nm,q[0],q[1]+r+11)};
+  body(ec(Math.cos(lam),Math.sin(lam),0),'#fff4c2',7,'Sol',true);
+  {const Lm=(218.316+13.176396*d)*RAD,Mo=(134.963+13.064993*d)*RAD,F=(93.272+13.22935*d)*RAD,lm=Lm+6.289*RAD*Math.sin(Mo),bm=5.128*RAD*Math.sin(F);
+   body(ec(Math.cos(bm)*Math.cos(lm),Math.cos(bm)*Math.sin(lm),Math.sin(bm)),'#e6e6e0',6,'Lua')}
+  const dd=d+1.5;
+  for(const[nm,o,col]of SKY.pl){const N=(o[0]+o[1]*dd)*RAD,i=(o[2]+o[3]*dd)*RAD,w=(o[4]+o[5]*dd)*RAD,a=o[6],e=o[7]+o[8]*dd,Mp=(o[9]+o[10]*dd)*RAD;
+    let En=Mp+e*Math.sin(Mp)*(1+e*Math.cos(Mp));for(let k=0;k<3;k++)En-=(En-e*Math.sin(En)-Mp)/(1-e*Math.cos(En));
+    const xv=a*(Math.cos(En)-e),yv=a*Math.sqrt(1-e*e)*Math.sin(En),vv=Math.atan2(yv,xv),r=Math.hypot(xv,yv),u=vv+w;
+    const xh=r*(Math.cos(N)*Math.cos(u)-Math.sin(N)*Math.sin(u)*Math.cos(i)),yh=r*(Math.sin(N)*Math.cos(u)+Math.cos(N)*Math.sin(u)*Math.cos(i)),zh=r*Math.sin(u)*Math.sin(i);
+    body(ec(xh+Rs*Math.cos(lam),yh+Rs*Math.sin(lam),zh),col,2.6,nm)}
+  ctx.textBaseline='alphabetic'}
 // ---- desenho
 function draw(lo){
   CP.length=0;setView();{const dm=Math.hypot(Math.max(cx,W-cx),Math.max(cy,H-cy));VA=dm>=R?Math.PI/2:Math.asin(dm/R)}ctx.setTransform(dpr,0,0,dpr,0,0);
   ctx.fillStyle='#02050b';ctx.fillRect(0,0,W,H);
-  for(const s of STARS){ctx.fillStyle=`rgba(255,255,255,${s[2]})`;ctx.fillRect(s[0]*W,s[1]*H,s[3],s[3])}
+  sky(lo);
   let g=ctx.createRadialGradient(cx,cy,R*.97,cx,cy,R*1.18);g.addColorStop(0,'rgba(110,170,255,.55)');g.addColorStop(1,'rgba(110,170,255,0)');
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R*1.18,0,TAU);ctx.fill();
   if(ready)globe(lo);else{ctx.fillStyle='#1a5a96';ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.fill()}
@@ -830,7 +881,7 @@ function labels(){
   if(!ready)return;
   const zl=Math.log2(R/R0)+1.7,pl=[],ZPAIS=Math.log2(3)+1.7;   // ZPAIS: zoom 3x, quando entram países e capitais
   const hit_=(x0,y0,x1,y1)=>{for(const p of pl)if(x0<p[2]&&x1>p[0]&&y0<p[3]&&y1>p[1])return true;pl.push([x0,y0,x1,y1]);return false};
-  const prj=v=>[cx+R*(-sl*v[0]+cl*v[1]),cy-R*(-sp*cl*v[0]-sp*sl*v[1]+cp*v[2]),cp*cl*v[0]+cp*sl*v[1]+sp*v[2]];
+  const prj=v=>{const u=-sl*v[0]+cl*v[1],w=-sp*cl*v[0]-sp*sl*v[1]+cp*v[2];return[cx+R*(u*cr-w*sr),cy-R*(u*sr+w*cr),cp*cl*v[0]+cp*sl*v[1]+sp*v[2]]};
   ctx.textBaseline='middle';ctx.lineJoin='round';
   // países; os pequenos só aparecem com zoom
   ctx.textAlign='center';
@@ -1003,7 +1054,7 @@ function setMode(f){
   flat=f;fly=null;ff=null;inertia=false;
   const b=$('zm');b.classList.toggle('on',f);b.textContent=f?'🌐':'🗺';b.setAttribute('aria-label',f?'Globo 3D':'Planisfério político');
   if(f){if(!flatInit)initFlat();S=S0;mcx=0;mcy=0;clampFlat();if(sel>=0&&C[sel])flyFlat(C[sel].ctr[0],C[sel].ctr[1],fitS(C[sel]))}
-  $('hint').textContent=f?'Arraste para mover · pince para zoom · toque num país':'Arraste para girar · pince para zoom · toque num país';
+  $('hint').textContent=f?'Arraste para mover · pince ou toque duplo para zoom · toque num país':'Arraste para girar · pince ou toque duplo para zoom · toque num país';
   document.title=f?'Atlas · Planisfério Político':'Atlas Globo · Satélite';$('zs').style.display=f?'none':'';if(f)$('at').style.display='none';req()}
 
 // ---- animação (só roda quando preciso)
@@ -1011,16 +1062,16 @@ function req(){if(!raf)raf=requestAnimationFrame(frame)}
 function frame(t){raf=0;const dt=last?Math.min(50,t-last):16;last=t;let more=false;
   if(flat){if(ff){const k=Math.min(1,(t-ff.t0)/ff.dur),e=1-Math.pow(1-k,3);mcx=ff.x0+(ff.x1-ff.x0)*e;mcy=ff.y0+(ff.y1-ff.y0)*e;S=Math.exp(Math.log(ff.s0)+(Math.log(ff.s1)-Math.log(ff.s0))*e);if(k>=1)ff=null;more=true}clampFlat();drawFlat();if(more)req();else last=0;return}
   if(fly){const k=Math.min(1,(t-fly.t0)/fly.dur),e=1-Math.pow(1-k,3);lon0=fly.l0+fly.dl*e;lat0=fly.p0+(fly.tp-fly.p0)*e;
-    R=Math.exp(Math.log(fly.R0)+(Math.log(fly.tR)-Math.log(fly.R0))*e);if(k>=1)fly=null;more=true}
+    R=Math.exp(Math.log(fly.R0)+(Math.log(fly.tR)-Math.log(fly.R0))*e);if(!fly.kr)rl=fly.r0*(1-e);if(k>=1)fly=null;more=true}
   else if(inertia){lon0-=vl*dt/16;lat0+=vp*dt/16;const f=Math.pow(.86,dt/16);vl*=f;vp*=f;if(Math.abs(vl)+Math.abs(vp)<.02)inertia=false;more=inertia}
   // a Terra gira de oeste para leste: a superfície passa da esquerda para a direita, então a longitude central diminui
   else if(ready&&auto&&sel<0&&!P.size){lon0-=4*dt/1000;more=true}
-  lat0=Math.max(-85,Math.min(85,lat0));lon0=((lon0+540)%360)-180;
+  if(lat0>90||lat0<-90){lat0=(lat0>90?180:-180)-lat0;lon0+=180;rl+=Math.PI;vp=-vp}lon0=((lon0+540)%360)-180;
   const anim=more||fly||inertia||(ready&&auto&&sel<0);draw(anim||P.size>0);if(anim)req();else last=0}
-function flyTo(tl,tp,tR){fly={t0:performance.now(),dur:700,l0:lon0,p0:lat0,R0:R,dl:((tl-lon0+540)%360)-180,tp:Math.max(-80,Math.min(80,tp)),tR};inertia=false;req()}
+function flyTo(tl,tp,tR,kr){fly={kr,r0:((rl+Math.PI)%TAU+TAU)%TAU-Math.PI,t0:performance.now(),dur:700,l0:lon0,p0:lat0,R0:R,dl:((tl-lon0+540)%360)-180,tp:Math.max(-80,Math.min(80,tp)),tR};inertia=false;req()}
 function size(){W=cv.clientWidth;H=cv.clientHeight;dpr=Math.min(window.devicePixelRatio||1,1.75);cv.width=W*dpr;cv.height=H*dpr;
   cx=W/2;cy=H*.46;const old=R0;R0=Math.min(W*.46,H*.4);R=old?R*R0/old:R0;const oS=S0;S0=Math.min(W*.96/(2*HX),H*.78/(2*HY));S=oS?S*S0/oS:S0;if(flat)clampFlat()}
-const clampR=r=>Math.max(R0*.8,Math.min(R0*(onlineOn&&onlineOK&&navigator.onLine!==false?150:40),r));
+const clampR=r=>Math.max(R0*.25,Math.min(R0*(onlineOn&&onlineOK&&navigator.onLine!==false?150:40),r));
 // ---- seleção
 let curI=-1;const CP=[];
 function closeCity(){$('cs').classList.remove('v');if(sel<0)document.body.classList.remove('sv')}
@@ -1053,20 +1104,28 @@ function hit(px,py){const x=(px-cx)/R,y=(cy-py)/R,d=x*x+y*y;if(d>1)return-1;setV
   const[lo,la]=unproj(x,y,Math.sqrt(1-d));
   for(let k=ORDER.length-1;k>=0;k--){const c=ORDER[k];for(const r of c.rings){if(r.hole)continue;const b=r.b;if(lo<b[0]||lo>b[2]||la<b[1]||la>b[3])continue;if(inside(r,lo,la))return c.i}}
   return-1}
+// ---- toque duplo: aproxima 2x no ponto tocado (mantém a inclinação do globo)
+function dblZoom(x,y){auto=false;
+  if(flat){zoomFlat(2,x,y);return}
+  const nx=(x-cx)/R,ny=(cy-y)/R,d=nx*nx+ny*ny;let lo=lon0,la=lat0;
+  if(d<=.98){setView();[lo,la]=unproj(nx,ny,Math.sqrt(1-d))}
+  flyTo(lo,la,clampR(R*2),true)}
 // ---- gestos
-const P=new Map();let moved=0,t0=0,pd=0,lmt=0;
+const P=new Map();let moved=0,t0=0,pd=0,lmt=0,pa=null,lastTap=null,tapT=0;const tw=()=>{const[p,q]=[...P.values()];return Math.atan2(q.y-p.y,q.x-p.x)};
 const dist=()=>{const[p,q]=[...P.values()];return Math.hypot(p.x-q.x,p.y-q.y)};
 cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}P.set(e.pointerId,{x:e.clientX,y:e.clientY});auto=false;inertia=false;fly=null;ff=null;vl=vp=0;
-  if(P.size==1){moved=0;t0=Date.now()}else{moved=99;pd=dist()}});
+  if(P.size==1){moved=0;t0=Date.now()}else{moved=99;pd=dist();pa=tw()}});
 cv.addEventListener('pointermove',e=>{const p=P.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
   if(flat){if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){mcx-=dx/S;mcy+=dy/S;clampFlat();req()}}
     else if(P.size==2){const d=dist();if(pd){const[a,b]=[...P.values()];zoomFlat(d/pd,(a.x+b.x)/2,(a.y+b.y)/2)}pd=d}return}
-  if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const zt=Math.min(1,Math.max(0,Math.log2(R/R0)/5)),zg=.3+1.5*zt*zt*(3-2*zt),k=57.3/R*zg,a=dx*k,b=dy*k;lon0-=a;lat0+=b;vl=vl*.5+a*.5;vp=vp*.5+b*.5;lmt=Date.now();req()}}
-  else if(P.size==2){const d=dist();if(pd){R=clampR(R*d/pd);req()}pd=d}});
+  if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const zt=Math.min(1,Math.max(0,Math.log2(R/R0)/5)),zg=.3+1.5*zt*zt*(3-2*zt),k=57.3/R*zg,a=(dx*cr-dy*sr)*k,b=(dx*sr+dy*cr)*k;const a2_=a/Math.max(cp,.35);lon0-=a2_;lat0+=b;vl=vl*.5+a2_*.5;vp=vp*.5+b*.5;lmt=Date.now();req()}}
+  else if(P.size==2){const d=dist();if(pd){R=clampR(R*d/pd);req()}pd=d;const a2=tw();if(pa!==null){let da=a2-pa;if(da>Math.PI)da-=TAU;if(da<-Math.PI)da+=TAU;rl-=da;req()}pa=a2}});
 cv.addEventListener('pointerup',e=>{
-  if(P.size==1&&moved<=8&&Date.now()-t0<500){const cc=nearCity(e.clientX,e.clientY);if(cc)openCity(cc);else pick(flat?hitFlat(e.clientX,e.clientY):hit(e.clientX,e.clientY),true)}
+  if(P.size==1&&moved<=8&&Date.now()-t0<500){const X=e.clientX,Y=e.clientY,now=Date.now();
+    if(lastTap&&now-lastTap.t<300&&Math.hypot(X-lastTap.x,Y-lastTap.y)<40){clearTimeout(tapT);lastTap=null;dblZoom(X,Y)}
+    else{lastTap={t:now,x:X,y:Y};tapT=setTimeout(()=>{lastTap=null;const cc=nearCity(X,Y);if(cc)openCity(cc);else pick(flat?hitFlat(X,Y):hit(X,Y),true)},280)}}
   else if(P.size==1&&moved>8&&R<=R0*6&&Date.now()-lmt<80&&Math.abs(vl)+Math.abs(vp)>.3){vl*=.6;vp*=.6;inertia=true;req()}
-  P.delete(e.pointerId);moved=99;pd=0;req()});
+  P.delete(e.pointerId);moved=99;pd=0;pa=null;req()});
 cv.addEventListener('pointercancel',e=>{P.delete(e.pointerId)});
 cv.addEventListener('wheel',e=>{e.preventDefault();auto=false;if(flat){zoomFlat(e.deltaY>0?1/1.15:1.15,e.clientX,e.clientY);return}R=clampR(R*(e.deltaY>0?1/1.15:1.15));req()},{passive:false});
 $('zi').onclick=()=>{if(flat){zoomFlat(1.5);return}auto=false;R=clampR(R*1.5);req()};$('zo').onclick=()=>{if(flat){zoomFlat(1/1.5);return}auto=false;R=clampR(R/1.5);req()};
