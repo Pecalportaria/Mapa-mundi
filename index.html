@@ -588,6 +588,14 @@ const RAD=Math.PI/180,TAU=Math.PI*2;
 const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
 const fmt=n=>n.toLocaleString('pt-BR');
 let W,H,dpr,cx,cy,R0,R=1,lon0=-50,lat0=15,auto=true,sel=-1,fly=null,vl=0,vp=0,inertia=false,raf=0,last=0;
+// ---- desempenho (telas Full HD+ de 90 Hz): DPR limitado, modo rápido durante gestos e ritmo de quadros regular
+// DPR_BASE: resolução do canvas parado (1,25 = nítido e leve) · DPR_FAST: enquanto gira / dá zoom (0,85). Se achar o texto macio, suba DPR_BASE para 1.5.
+const DPR_BASE=Math.min(window.devicePixelRatio||1,1.25),DPR_FAST=Math.min(DPR_BASE,.85);
+let FAST=false,fastUntil=0,fastT=0,dprT=0,VS=16.7,GAP=10,vsPrev=0;const vsArr=[];
+function applyDpr(d){dprT=d;cv.width=Math.max(1,Math.round(W*d));cv.height=Math.max(1,Math.round(H*d));dpr=cv.width/W}
+function touchFast(ms){fastUntil=performance.now()+(ms||220)}   // marca "em movimento"; ~0,2 s depois de parar volta ao desenho completo
+function fastTick(t){const d=FAST?DPR_FAST:DPR_BASE;if(d!==dprT)applyDpr(d);
+  if(FAST&&t<fastUntil&&!fastT)fastT=setTimeout(()=>{fastT=0;req()},fastUntil-t+40)}
 let sl,cl,sp,cp,rl=0,cr=1,sr=0;   // rl: giro do globo em torno do eixo de visão (rad)
 let C=[],ORDER=[],LBS=[],CITIES=[],TX=new Float32Array(1),TY=TX,TZ=TX;
 const STARS=[];{let s=7;const rnd=()=>(s=(s*16807)%2147483647)/2147483647;for(let i=0;i<90;i++)STARS.push([rnd(),rnd(),.3+rnd()*.6,rnd()<.2?1.6:1])}
@@ -599,8 +607,12 @@ const pg=p=>{const m={};for(const k in (p||{}))m[k.toLowerCase()]=p[k];return k=
 const num=v=>{v=Number(v);return isFinite(v)?v:NaN};
 
 // ---- países: anéis em 3D (subdivididos para curvar sobre a esfera) e em lon/lat (para toque)
+// pré-processamento na carga: descarta vértices a menos de ~0,0008° (≈90 m: menos de 0,4 px até no zoom máximo)
+function dropNear(pts){const n=pts.length;if(n<24)return pts;const E2=6.4e-7,o=[pts[0]];let lx=pts[0][0],ly=pts[0][1];
+  for(let k=1;k<n-1;k++){const p=pts[k],dx=(p[0]-lx)*Math.cos(p[1]*RAD),dy=p[1]-ly;if(dx*dx+dy*dy>=E2){o.push(p);lx=p[0];ly=p[1]}}
+  o.push(pts[n-1]);return o.length>=6?o:pts}
 function mkRing(pts,hole){
-  let n0=pts.length;if(n0>1&&pts[0][0]===pts[n0-1][0]&&pts[0][1]===pts[n0-1][1])n0--;
+  pts=dropNear(pts);let n0=pts.length;if(n0>1&&pts[0][0]===pts[n0-1][0]&&pts[0][1]===pts[n0-1][1])n0--;
   if(n0<3)return null;
   const lo=new Float32Array(n0),la=new Float32Array(n0),v=new Float32Array(n0*3);
   let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9,mx=0,my=0,mz=0;
@@ -628,12 +640,16 @@ function buildCountries(gj){
     if(!rings.length)continue;
     let main=null,ma=-1;for(const r of rings){if(r.hole)continue;const a=(r.b[2]-r.b[0])*(r.b[3]-r.b[1]);if(a>ma){ma=a;main=r}}
     if(!main)main=rings[0];const b=main.b,ctr=[(b[0]+b[2])/2,(b[1]+b[3])/2];
+    // esfera envolvente do país: se estiver fora da tela ou no lado oculto, nenhum anel é percorrido
+    let sx=0,sy=0,sz=0;for(const r of rings){sx+=r.vx;sy+=r.vy;sz+=r.vz}
+    const sn=Math.hypot(sx,sy,sz);let cvx=main.vx,cvy=main.vy,cvz=main.vz,crd=Math.PI;
+    if(sn>.05){cvx=sx/sn;cvy=sy/sn;cvz=sz/sn;crd=0;for(const r of rings){const a=Math.acos(Math.max(-1,Math.min(1,cvx*r.vx+cvy*r.vy+cvz*r.vz)))+r.rad;if(a>crd)crd=a}}
     let lx=num(g('label_x')),ly=num(g('label_y'));if(isNaN(lx)||isNaN(ly)){lx=ctr[0];ly=ctr[1]}
     const mn=num(g('min_label')),ml=isNaN(mn)?4:Math.max(1.3,Math.min(6.4,mn-1.5));
     const name=g('name_pt')||PT[g('adm0_a3')]||g('name')||g('admin')||'?';
     out.push({i:out.length,name,adm:g('adm0_a3')||'',iso:g('iso_a3')||'',iso2:g('iso_a2')||'',admin:g('admin')||'',mc:num(g('mapcolor9')),lx,ly,
       cont:CONT[g('continent')]||g('continent')||'—',pop:num(g('pop_est'))||0,area:Math.max(0,area),cap:'',
-      rings,ml,f:ml<=2?13:ml<=3.5?12:11.5,capObj:null,
+      rings,ml,f:ml<=2?13:ml<=3.5?12:11.5,capObj:null,vx:cvx,vy:cvy,vz:cvz,rad:crd,
       lv:[Math.cos(ly*RAD)*Math.cos(lx*RAD),Math.cos(ly*RAD)*Math.sin(lx*RAD),Math.sin(ly*RAD)],
       ctr,bw:b[2]-b[0],bh:b[3]-b[1]})}
   C=out;ORDER=[...C].sort((p,q)=>q.area-p.area);LBS=[...C].sort((p,q)=>p.ml-q.ml||q.pop-p.pop);
@@ -695,11 +711,19 @@ function buildLevel(r,tol){
     if(d>.05){const mm=Math.ceil(d/.05),sd=Math.sin(d);for(let i=1;i<mm;i++){const t=i/mm,w1=Math.sin((1-t)*d)/sd,w2=Math.sin(t*d)/sd;
       out.push(w1*v[a]+w2*v[q],w1*v[a+1]+w2*v[q+1],w1*v[a+2]+w2*v[q+2])}}}
   const P=Float32Array.from(out);return{P,n:P.length/3}}
+function getLv(r,lv){const L=r.L||(r.L={});return L[lv]||(L[lv]=buildLevel(r,.004*Math.pow(2,lv)))}
 function lvP(r){
   if(r.lo.length<120)return r;
-  const td=.5/(R*RAD);if(td<=.004)return r;
-  const lv=Math.min(9,Math.ceil(Math.log2(td/.004)));
-  const L=r.L||(r.L={});return L[lv]||(L[lv]=buildLevel(r,.004*Math.pow(2,lv)))}
+  const td=(FAST?1.2:.5)/(R*RAD);if(td<=.004)return r;   // em movimento: tolerância maior (menos vértices)
+  return getLv(r,Math.min(9,Math.ceil(Math.log2(td/.004))))}
+// pré-processamento em segundo plano (fatias de ~6 ms, pausa durante gestos): os níveis de detalhe já estão prontos
+// antes do zoom, então cruzar de nível não trava mais
+function prebuildLOD(){const Q=[];for(const lv of [7,6,5,4,3,8,9,2])for(const c of ORDER)for(const r of c.rings)if(r.lo.length>=120)Q.push(r,lv);
+  let i=0;const idle=f=>window.requestIdleCallback?requestIdleCallback(f,{timeout:300}):setTimeout(f,30);
+  const step=()=>{if(FAST||P.size>0){setTimeout(step,150);return}
+    const t0=performance.now();while(i<Q.length&&performance.now()-t0<6){getLv(Q[i],Q[i+1]);i+=2}
+    if(i<Q.length)idle(step)};
+  setTimeout(step,600)}
 function arcTo(a1,a2,r){const d=((a2-a1)%TAU+TAU)%TAU,m=a1+d/2,x=Math.cos(m)*.995,y=-Math.sin(m)*.995,z=Math.sqrt(Math.max(0,1-x*x-y*y));
   const[lo,la]=unproj(x,y,z);ctx.arc(cx,cy,R,a1,a2,!inside(r,lo,la))}
 // adiciona um anel ao caminho atual, recortando no horizonte do globo
@@ -748,13 +772,18 @@ const gc=document.createElement('canvas'),gx=gc.getContext('2d');let gd=null;
 const TURL='https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/';
 const TILES=new Map(),TQ=[];let tAct=0,onlineOK=true,onlineOn=true,tRedraw=0,TR=0,TG=0,TB=0,tcv=null,tcx=null;
 try{onlineOn=localStorage.getItem('atlas-online')!=='0'}catch(e){}
+const NOTILE={s:0};let TQZ=-1;
+// decodifica 1 ladrilho por vez (getImageData + clareamento custam alguns ms): espaçado e adiado enquanto há gesto
+const DEC=[];let decT=0;
+function queueDec(f){DEC.push(f);if(!decT)decT=setTimeout(drainDec,FAST?90:0)}
+function drainDec(){decT=0;if(FAST&&DEC.length){decT=setTimeout(drainDec,90);return}const f=DEC.shift();if(f)f();if(DEC.length)decT=setTimeout(drainDec,12)}
 function wantTile(z,x,y,key){const t={s:0};TILES.set(key,t);TQ.push([z,x,y,key]);
   if(TQ.length>48){const o=TQ.shift();TILES.delete(o[3])}pumpT();return t}
 function pumpT(){while(tAct<6&&TQ.length){const q=TQ.pop();tAct++;loadT(q[0],q[1],q[2],q[3])}}
 function tileDone(){if(!tRedraw)tRedraw=setTimeout(()=>{tRedraw=0;req()},120)}
 function loadT(z,x,y,key){const im=new Image();im.crossOrigin='anonymous';
   const fin=ok=>{tAct--;if(!ok){const t=TILES.get(key);if(t)t.f=1;setTimeout(()=>{TILES.delete(key);},8000)}pumpT()};
-  im.onload=()=>{try{
+  im.onload=()=>queueDec(()=>{try{
     const c=tcv||(tcv=document.createElement('canvas'));c.width=c.height=256;const x2=tcx||(tcx=c.getContext('2d',{willReadFrequently:true}));
     x2.drawImage(im,0,0,256,256);const d=x2.getImageData(0,0,256,256).data;
     // mesmo clareamento do oceano da textura base, para as duas imagens combinarem
@@ -762,7 +791,7 @@ function loadT(z,x,y,key){const im=new Image();im.crossOrigin='anonymous';
       if(w>0){const k=cl01((b-35)/120),m=w*.92;d[p]=r+(38+62*k-r)*m;d[p+1]=g+(84+82*k-g)*m;d[p+2]=b+(162+52*k-b)*m}}
     TILES.set(key,{d});
     if(TILES.size>200){let n=0;for(const[k,t]of TILES){if(t.d){TILES.delete(k);if(++n>=50)break}}}
-    fin(true);tileDone()}catch(e){onlineOK=false;fin(false)}};
+    fin(true);tileDone()}catch(e){onlineOK=false;fin(false)}});
   im.onerror=()=>fin(false);
   im.src=TURL+z+'/'+y+'/'+x}
 function smp(D,fx,fy){let gx=fx-.5,gy=fy-.5,x0=Math.floor(gx),y0=Math.floor(gy);const ax=gx-x0,ay=gy-y0;
@@ -773,9 +802,11 @@ function smp(D,fx,fy){let gx=fx-.5,gy=fy-.5,x0=Math.floor(gx),y0=Math.floor(gy);
 function globe(lo){
   const x0=Math.max(0,Math.floor(cx-R)),x1=Math.min(W,Math.ceil(cx+R)),y0=Math.max(0,Math.floor(cy-R)),y1=Math.min(H,Math.ceil(cy+R)),bw=x1-x0,bh=y1-y0;
   if(bw<=0||bh<=0)return;
-  const q=Math.min(dpr,Math.sqrt((lo?130000:520000)/(bw*bh))),ow=Math.max(1,Math.round(bw*q)),oh=Math.max(1,Math.round(bh*q));
+  const q=Math.min(dpr,Math.sqrt((FAST?100000:lo?130000:520000)/(bw*bh))),ow=Math.max(1,Math.round(bw*q)),oh=Math.max(1,Math.round(bh*q));
   if(!gd||gc.width!==ow||gc.height!==oh){gc.width=ow;gc.height=oh;gd=gx.createImageData(ow,oh)}
-  const tzf=Math.log2(TAU*R*q/256),onl=onlineOn&&onlineOK&&navigator.onLine!==false&&tzf>=3.2,tz=onl?Math.min(11,Math.ceil(tzf-.25)):0,TN=256*Math.pow(2,tz),kb=onl?Math.min(1,tzf-3.2):0;let lk=-1,lt=null,used=false;
+  const tzf=Math.log2(TAU*R*q/256),onl=onlineOn&&onlineOK&&navigator.onLine!==false&&tzf>=3.2,tz=onl?Math.min(11,Math.ceil(tzf-.25)):0,TN=256*Math.pow(2,tz),kb=onl?Math.min(1,tzf-3.2):0;let lk=-1,lt=null,used=false;   // em movimento (FAST) não pede ladrilhos novos: usa só os já guardados
+  // ladrilhos de outro nível de zoom que ainda esperam na fila já não servem: descarta (só com o movimento parado)
+  if(onl&&!FAST&&tz!==TQZ){TQZ=tz;for(let k=TQ.length-1;k>=0;k--)if(TQ[k][0]!==tz){TILES.delete(TQ[k][3]);TQ.splice(k,1)}}
   const out=gd.data,sx=bw/ow,sy=bh/oh,iR=1/R,T=TEX,INV_TAU=1/TAU,INV_PI=1/Math.PI;
   const Lx=-.38,Ly=.5,Lz=.78;let o=0;
   for(let j=0;j<oh;j++){const ny=(cy-(y0+(j+.5)*sy))*iR,ny2=ny*ny;
@@ -790,7 +821,7 @@ function globe(lo){
       const oc=(T[a4+3]*w00+T[b4+3]*w10+T[c4+3]*w01+T[e4+3]*w11)/255;
       if(kb>0&&Z<.9962&&Z>-.9962){
         const xp=(ln*INV_TAU+.5)*TN,yp=(.5-.5*Math.log((1+Z)/(1-Z))*INV_TAU)*TN,tx=(xp/256)|0,ty=(yp/256)|0,key=(tz*2048+tx)*2048+ty;
-        let t;if(key===lk)t=lt;else{t=TILES.get(key);if(t===undefined)t=wantTile(tz,tx,ty,key);lk=key;lt=t}
+        let t;if(key===lk)t=lt;else{t=TILES.get(key);if(t===undefined)t=FAST?NOTILE:wantTile(tz,tx,ty,key);lk=key;lt=t}
         if(t.d){smp(t.d,xp-tx*256,yp-ty*256);r+=(TR-r)*kb;g+=(TG-g)*kb;bl+=(TB-bl)*kb;used=true}
         else{for(let k=1;k<=3&&tz-k>=0;k++){const pxp=xp/(1<<k),pyp=yp/(1<<k),ptx=(pxp/256)|0,pty=(pyp/256)|0,pt=TILES.get(((tz-k)*2048+ptx)*2048+pty);
           if(pt&&pt.d){smp(pt.d,pxp-ptx*256,pyp-pty*256);r+=(TR-r)*kb;g+=(TG-g)*kb;bl+=(TB-bl)*kb;used=true;break}}}}
@@ -802,7 +833,7 @@ function globe(lo){
       const rim=1-nz,k=rim*rim*rim*rim*.7;r+=(110-r)*k;g+=(170-g)*k;bl+=(255-bl)*k;
       out[o]=r;out[o+1]=g;out[o+2]=bl;out[o+3]=255}}
   gx.putImageData(gd,0,0);$('at').style.display=used?'block':'none';
-  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.clip();ctx.imageSmoothingEnabled=true;ctx.drawImage(gc,x0,y0,bw,bh);ctx.restore();
+  ctx.save();ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.clip();ctx.imageSmoothingEnabled=!FAST;ctx.drawImage(gc,x0,y0,bw,bh);ctx.restore();
 }
 // contorno só do que está visível (sem riscar o limbo); pula anéis minúsculos e pontos a <0,7px
 function lineRing(r){if(r.rad*R<.7||!vis(r))return;const q_=lvP(r),n=q_.n;rot(q_.P,n);let pen=false,lx=0,ly=0;
@@ -842,18 +873,18 @@ let LITE=false,_st=0,_sn=0,_ss=0;
 function sky(lo){
   {const n=performance.now();if(lo&&_st&&n-_st<200){_ss+=n-_st;if(++_sn>=40){if(_ss/_sn>38)LITE=true;_sn=0;_ss=0}}_st=n}
   const d=Date.now()/864e5-10957.5,g=((280.46061837+360.98564736629*d)%360)*RAD,cg=Math.cos(g),sg=Math.sin(g),K=Math.hypot(W,H)*.5;
-  const PJ=v=>{const a=v[0]*cg+v[1]*sg,b=-v[0]*sg+v[1]*cg,u=-sl*a+cl*b,w=-sp*cl*a-sp*sl*b+cp*v[2];return[cx+K*(u*cr-w*sr),cy-K*(u*sr+w*cr),cp*cl*a+cp*sl*b+sp*v[2]]};
+  const Q3=[0,0,0],PJ=v=>{const a=v[0]*cg+v[1]*sg,b=-v[0]*sg+v[1]*cg,u=-sl*a+cl*b,w=-sp*cl*a-sp*sl*b+cp*v[2];Q3[0]=cx+K*(u*cr-w*sr);Q3[1]=cy-K*(u*sr+w*cr);Q3[2]=cp*cl*a+cp*sl*b+sp*v[2];return Q3};   // vetor reutilizado: sem criar milhares de arrays por quadro
   const E=23.4393*RAD,ce=Math.cos(E),se=Math.sin(E),ec=(x,y,z)=>{const n=Math.hypot(x,y,z);return[x/n,(y*ce-z*se)/n,(y*se+z*ce)/n]};
   const M=(357.529+.98560028*d)*RAD,lam=(280.459+.98564736*d)*RAD+(1.915*Math.sin(M)+.02*Math.sin(2*M))*RAD,Rs=1.00014-.01671*Math.cos(M);
-  const stp=LITE?3:lo?2:1,rs=K*.1;ctx.globalAlpha=.04*stp;
+  const stp=(LITE||FAST)?3:lo?2:1,rs=K*.1;ctx.globalAlpha=.04*stp;
   for(let i=0;i<SKY.mw.length;i+=stp){const q=PJ(SKY.mw[i]);if(q[2]<0)ctx.drawImage(SKY.sw,q[0]-rs,q[1]-rs,2*rs,2*rs)}
   ctx.globalAlpha=.1*stp;for(let i=0;i<(LITE?0:SKY.dust.length);i+=stp){const q=PJ(SKY.dust[i]);if(q[2]<0)ctx.drawImage(SKY.sk,q[0]-rs*.8,q[1]-rs*.8,1.6*rs,1.6*rs)}
   ctx.globalAlpha=1;
   for(let c=0;c<6;c++){ctx.fillStyle=`rgba(${SKY.GC[c>>1]},${c&1?.95:.55})`;const A=SKY.gs[c];for(let i=0;i<A.length;i+=stp){const q=PJ(A[i]);if(q[2]<0)ctx.fillRect(q[0],q[1],A[i][3],A[i][3])}}
-  for(const t of SKY.st){const q=PJ(t);if(q[2]<0){ctx.fillStyle=t[5];ctx.fillRect(q[0],q[1],t[4],t[4])}}
+  for(let i=0;i<SKY.st.length;i+=FAST?2:1){const t=SKY.st[i],q=PJ(t);if(q[2]<0){ctx.fillStyle=t[5];ctx.fillRect(q[0],q[1],t[4],t[4])}}
   ctx.fillStyle='#fff';for(const v of SKY.bright){const q=PJ(v);if(q[2]<0){ctx.beginPath();ctx.arc(q[0],q[1],1.6,0,TAU);ctx.fill()}}
   ctx.font='11px Georgia,serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.lineWidth=.8;
-  for(const c of SKY.cs){const P=c.p.map(PJ);ctx.strokeStyle='rgba(150,190,255,.4)';ctx.beginPath();
+  for(const c of SKY.cs){const P=c.p.map(v=>PJ(v).slice());ctx.strokeStyle='rgba(150,190,255,.4)';ctx.beginPath();
     for(const[a,b]of c.l)if(P[a][2]<0&&P[b][2]<0){ctx.moveTo(P[a][0],P[a][1]);ctx.lineTo(P[b][0],P[b][1])}ctx.stroke();
     ctx.fillStyle='#fff';let mx=0,my=0,ok=0;for(const q of P)if(q[2]<0){ctx.beginPath();ctx.arc(q[0],q[1],1.7,0,TAU);ctx.fill();mx+=q[0];my+=q[1];ok++}
     if(ok>=P.length-1){ctx.fillStyle='rgba(180,208,255,.7)';ctx.fillText(c.n,mx/ok,my/ok+16)}}
@@ -872,18 +903,19 @@ function sky(lo){
   ctx.textBaseline='alphabetic'}
 // ---- desenho
 function draw(lo){
-  CP.length=0;setView();{const dm=Math.hypot(Math.max(cx,W-cx),Math.max(cy,H-cy));VA=dm>=R?Math.PI/2:Math.asin(dm/R)}ctx.setTransform(dpr,0,0,dpr,0,0);
+  CP.length=0;setView();{const dm=Math.hypot(Math.max(cx,W-cx),Math.max(cy,H-cy));VA=dm>=R?Math.PI/2:Math.asin(dm/R)}ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=!FAST;
   ctx.fillStyle='#02050b';ctx.fillRect(0,0,W,H);
   sky(lo);
   let g=ctx.createRadialGradient(cx,cy,R*.97,cx,cy,R*1.18);g.addColorStop(0,'rgba(110,170,255,.55)');g.addColorStop(1,'rgba(110,170,255,0)');
   ctx.fillStyle=g;ctx.beginPath();ctx.arc(cx,cy,R*1.18,0,TAU);ctx.fill();
   if(ready)globe(lo);else{ctx.fillStyle='#1a5a96';ctx.beginPath();ctx.arc(cx,cy,R,0,TAU);ctx.fill()}
   ctx.lineJoin='round';
-  if(bordersOn&&ready){const lw=Math.min(2.4,.85+.3*Math.max(0,Math.log2(R/R0)));ctx.lineJoin='round';ctx.beginPath();for(const c of ORDER)if(c.i!==sel)for(const r of c.rings)lineRing(r);
-    ctx.strokeStyle='rgba(0,10,25,.5)';ctx.lineWidth=lw+1.5;ctx.stroke();ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=lw;ctx.stroke()}
+  if(bordersOn&&ready){const lw=Math.min(2.4,.85+.3*Math.max(0,Math.log2(R/R0)));ctx.lineJoin='round';ctx.beginPath();for(const c of ORDER)if(c.i!==sel&&vis(c))for(const r of c.rings)lineRing(r);
+    if(!FAST){ctx.strokeStyle='rgba(0,10,25,.5)';ctx.lineWidth=lw+1.5;ctx.stroke()}   // em movimento: sem o contorno escuro (metade do custo)
+    ctx.strokeStyle='rgba(255,255,255,.92)';ctx.lineWidth=lw;ctx.stroke()}
   if(sel>=0&&ready){const c=C[sel];ctx.beginPath();for(const r of c.rings)addRing(r);ctx.fillStyle='rgba(255,210,63,.3)';ctx.fill('evenodd');
     ctx.beginPath();for(const r of c.rings)lineRing(r);ctx.strokeStyle='#ffd23f';ctx.lineWidth=1.8;ctx.stroke()}
-  labels();
+  if(!FAST)labels();   // rótulos (países, cidades, mares) só com o movimento parado
 }
 // rótulos de tamanho fixo na tela. Globo inicial: só nomes de países (+ oceanos pequenos).
 // Com zoom: capitais, depois oceanos/mares, depois as demais cidades (maiores primeiro).
@@ -992,7 +1024,7 @@ function hitLL(lo,la){
   return-1}
 function hitFlat(px,py){const p=rbInv(mcx+(px-cx)/S,mcy-(py-cy)/S);return p?hitLL(p[0],p[1]):-1}
 function drawFlat(){CP.length=0;
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.fillStyle='#0b1626';ctx.fillRect(0,0,W,H);ctx.lineJoin='round';
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.imageSmoothingEnabled=!FAST;ctx.fillStyle='#0b1626';ctx.fillRect(0,0,W,H);ctx.lineJoin='round';
   const SX=x=>cx+(x-mcx)*S,SY=y=>cy-(y-mcy)*S;
   const op=new Path2D();OLP.forEach((p,i)=>{const X=SX(p[0]),Y=SY(p[1]);i?op.lineTo(X,Y):op.moveTo(X,Y)});op.closePath();
   ctx.save();ctx.clip(op);ctx.fillStyle='#d6e9f7';ctx.fillRect(0,0,W,H);
@@ -1012,7 +1044,7 @@ function drawFlat(){CP.length=0;
     ctx.fillStyle='rgba(255,210,63,.45)';ctx.fill(p,'evenodd');ctx.strokeStyle='#c98a00';ctx.lineWidth=1.8;ctx.stroke(p)}
   ctx.restore();
   ctx.strokeStyle='#3b7ea8';ctx.lineWidth=1.2;ctx.stroke(op);
-  labelsFlat()}
+  if(!FAST)labelsFlat()}
 function labelsFlat(){
   const zl=Math.log2(S/S0)+1.45,pl=[],ks=Math.min(1,.7+.3*Math.max(0,zl-1.5)/1.2);
   const hit_=(x0,y0,x1,y1)=>{for(const p of pl)if(x0<p[2]&&x1>p[0]&&y0<p[3]&&y1>p[1])return true;pl.push([x0,y0,x1,y1]);return false};
@@ -1070,18 +1102,22 @@ function setMode(f){
 
 // ---- animação (só roda quando preciso)
 function req(){if(!raf)raf=requestAnimationFrame(frame)}
-function frame(t){raf=0;if(last&&t-last<15){req();return}   // limita a ~60 quadros/s: em telas de 90/120 Hz o ritmo fica regular em vez de falhar
+function frame(t){raf=0;
+  // mede o intervalo do vsync (60/90/120 Hz) e escolhe um ritmo regular: ~60 quadros/s, ou um divisor exato (ex.: 45 em 90 Hz), em vez de intercalar quadros longos e curtos
+  if(vsPrev){const d=t-vsPrev;if(d>3&&d<40){vsArr.push(d);if(vsArr.length>=24){vsArr.sort((a,b)=>a-b);VS=Math.max(6,vsArr[5]);vsArr.length=0;GAP=VS*(Math.max(1,Math.ceil(13.4/VS))-.4)}}}vsPrev=t;
+  if(last&&t-last<GAP){req();return}
   const dt=last?Math.min(50,t-last):16;last=t;let more=false;
-  if(flat){if(ff){const k=Math.min(1,(t-ff.t0)/ff.dur),e=1-Math.pow(1-k,3);mcx=ff.x0+(ff.x1-ff.x0)*e;mcy=ff.y0+(ff.y1-ff.y0)*e;S=Math.exp(Math.log(ff.s0)+(Math.log(ff.s1)-Math.log(ff.s0))*e);if(k>=1)ff=null;more=true}clampFlat();drawFlat();if(more)req();else last=0;return}
+  if(flat){if(ff){const k=Math.min(1,(t-ff.t0)/ff.dur),e=1-Math.pow(1-k,3);mcx=ff.x0+(ff.x1-ff.x0)*e;mcy=ff.y0+(ff.y1-ff.y0)*e;S=Math.exp(Math.log(ff.s0)+(Math.log(ff.s1)-Math.log(ff.s0))*e);if(k>=1)ff=null;more=true}FAST=!!ff||t<fastUntil;fastTick(t);clampFlat();drawFlat();if(more)req();else last=0;return}
   if(fly){const k=Math.min(1,(t-fly.t0)/fly.dur),e=1-Math.pow(1-k,3);lon0=fly.l0+fly.dl*e;lat0=fly.p0+(fly.tp-fly.p0)*e;
     R=Math.exp(Math.log(fly.R0)+(Math.log(fly.tR)-Math.log(fly.R0))*e);if(!fly.kr)rl=fly.r0*(1-e);if(k>=1)fly=null;more=true}
   else if(inertia){lon0-=vl*dt/16;lat0+=vp*dt/16;const f=Math.pow(.86,dt/16);vl*=f;vp*=f;if(Math.abs(vl)+Math.abs(vp)<.02)inertia=false;more=inertia}
   // a Terra gira de oeste para leste: a superfície passa da esquerda para a direita, então a longitude central diminui
   else if(ready&&auto&&sel<0&&!P.size){lon0-=4*dt/1000;more=true}
   if(lat0>90||lat0<-90){lat0=(lat0>90?180:-180)-lat0;lon0+=180;rl+=Math.PI;vp=-vp}lon0=((lon0+540)%360)-180;
+  FAST=!!fly||inertia||t<fastUntil;fastTick(t);   // modo rápido: gesto em curso, inércia ou animação de zoom
   const anim=more||fly||inertia||(ready&&auto&&sel<0);draw(anim||P.size>0);if(anim)req();else last=0}
 function flyTo(tl,tp,tR,kr){fly={kr,r0:((rl+Math.PI)%TAU+TAU)%TAU-Math.PI,t0:performance.now(),dur:700,l0:lon0,p0:lat0,R0:R,dl:((tl-lon0+540)%360)-180,tp:Math.max(-80,Math.min(80,tp)),tR};inertia=false;req()}
-function size(){W=cv.clientWidth;H=cv.clientHeight;dpr=Math.min(window.devicePixelRatio||1,1.75);cv.width=W*dpr;cv.height=H*dpr;
+function size(){W=cv.clientWidth;H=cv.clientHeight;applyDpr(FAST?DPR_FAST:DPR_BASE);
   cx=W/2;cy=H*.46;const old=R0;R0=Math.min(W*.46,H*.4);R=old?R*R0/old:R0;const oS=S0;S0=Math.min(W*.96/(2*HX),H*.78/(2*HY));S=oS?S*S0/oS:S0;if(flat)clampFlat()}
 const clampR=r=>Math.max(R0*.25,Math.min(R0*(onlineOn&&onlineOK&&navigator.onLine!==false?150:40),r));
 // ---- seleção
@@ -1128,10 +1164,10 @@ const dist=()=>{const[p,q]=[...P.values()];return Math.hypot(p.x-q.x,p.y-q.y)};
 cv.addEventListener('pointerdown',e=>{try{cv.setPointerCapture(e.pointerId)}catch(_){}P.set(e.pointerId,{x:e.clientX,y:e.clientY});auto=false;inertia=false;fly=null;ff=null;vl=vp=0;
   if(P.size==1){moved=0;t0=Date.now()}else{moved=99;pd=dist();pa=tw()}});
 cv.addEventListener('pointermove',e=>{const p=P.get(e.pointerId);if(!p)return;const dx=e.clientX-p.x,dy=e.clientY-p.y;p.x=e.clientX;p.y=e.clientY;
-  if(flat){if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){mcx-=dx/S;mcy+=dy/S;clampFlat();req()}}
-    else if(P.size==2){const d=dist();if(pd){const[a,b]=[...P.values()];zoomFlat(d/pd,(a.x+b.x)/2,(a.y+b.y)/2)}pd=d}return}
-  if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const zt=Math.min(1,Math.max(0,Math.log2(R/R0)/5)),zg=.3+1.5*zt*zt*(3-2*zt),k=57.3/R*zg,a=(dx*cr-dy*sr)*k,b=(dx*sr+dy*cr)*k;const a2_=a/Math.max(cp,.35);lon0-=a2_;lat0+=b;vl=vl*.5+a2_*.5;vp=vp*.5+b*.5;lmt=Date.now();req()}}
-  else if(P.size==2){const d=dist();if(pd){R=clampR(R*d/pd);req()}pd=d;const a2=tw();if(pa!==null){let da=a2-pa;if(da>Math.PI)da-=TAU;if(da<-Math.PI)da+=TAU;rl-=da;req()}pa=a2}});
+  if(flat){if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){mcx-=dx/S;mcy+=dy/S;clampFlat();touchFast();req()}}
+    else if(P.size==2){const d=dist();if(pd){const[a,b]=[...P.values()];touchFast();zoomFlat(d/pd,(a.x+b.x)/2,(a.y+b.y)/2)}pd=d}return}
+  if(P.size==1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){const zt=Math.min(1,Math.max(0,Math.log2(R/R0)/5)),zg=.3+1.5*zt*zt*(3-2*zt),k=57.3/R*zg,a=(dx*cr-dy*sr)*k,b=(dx*sr+dy*cr)*k;const a2_=a/Math.max(cp,.35);lon0-=a2_;lat0+=b;vl=vl*.5+a2_*.5;vp=vp*.5+b*.5;lmt=Date.now();touchFast();req()}}
+  else if(P.size==2){const d=dist();if(pd){R=clampR(R*d/pd);touchFast();req()}pd=d;const a2=tw();if(pa!==null){let da=a2-pa;if(da>Math.PI)da-=TAU;if(da<-Math.PI)da+=TAU;rl-=da;touchFast();req()}pa=a2}});
 cv.addEventListener('pointerup',e=>{
   if(P.size==1&&moved<=8&&Date.now()-t0<500){const X=e.clientX,Y=e.clientY,now=Date.now();
     if(lastTap&&now-lastTap.t<300&&Math.hypot(X-lastTap.x,Y-lastTap.y)<40){clearTimeout(tapT);lastTap=null;dblZoom(X,Y)}
@@ -1139,7 +1175,7 @@ cv.addEventListener('pointerup',e=>{
   else if(P.size==1&&moved>8&&R<=R0*6&&Date.now()-lmt<80&&Math.abs(vl)+Math.abs(vp)>.3){vl*=.6;vp*=.6;inertia=true;req()}
   P.delete(e.pointerId);moved=99;pd=0;pa=null;req()});
 cv.addEventListener('pointercancel',e=>{P.delete(e.pointerId)});
-cv.addEventListener('wheel',e=>{e.preventDefault();auto=false;if(flat){zoomFlat(e.deltaY>0?1/1.15:1.15,e.clientX,e.clientY);return}R=clampR(R*(e.deltaY>0?1/1.15:1.15));req()},{passive:false});
+cv.addEventListener('wheel',e=>{e.preventDefault();auto=false;touchFast();if(flat){zoomFlat(e.deltaY>0?1/1.15:1.15,e.clientX,e.clientY);return}R=clampR(R*(e.deltaY>0?1/1.15:1.15));req()},{passive:false});
 $('zi').onclick=()=>{if(flat){zoomFlat(1.5);return}auto=false;R=clampR(R*1.5);req()};$('zo').onclick=()=>{if(flat){zoomFlat(1/1.5);return}auto=false;R=clampR(R/1.5);req()};
 $('zm').onclick=()=>setMode(!flat);
 $('zs').onclick=e=>{onlineOn=!onlineOn;e.currentTarget.classList.toggle('on',onlineOn);e.currentTarget.setAttribute('aria-pressed',onlineOn);try{localStorage.setItem('atlas-online',onlineOn?'1':'0')}catch(_){}R=clampR(R);req()};
@@ -1159,7 +1195,7 @@ size();req();
 // ---- inicialização: textura embutida + dados locais (em paralelo)
 const texP=new Promise(ok=>{PHOTO.onerror=()=>{$('ld').textContent='Falha ao carregar a imagem do globo'};PHOTO.onload=()=>runGen(genTex(),ok);PHOTO.src='data:image/jpeg;base64,'+PB64});
 const dataP=Promise.allSettled([getJSON(FILES_C),getJSON(FILES_P)]).then(([a,b])=>{
-  if(a.status==='fulfilled'){try{buildCountries(a.value)}catch(e){console.error(e)}}
+  if(a.status==='fulfilled'){try{buildCountries(a.value);prebuildLOD()}catch(e){console.error(e)}}
   if(b.status==='fulfilled'){try{buildCities(b.value)}catch(e){console.error(e)}}
   linkCapitals();fillSearch();
   const miss=[];if(a.status!=='fulfilled')miss.push('Países.json');if(b.status!=='fulfilled')miss.push('Cidades.geojson');

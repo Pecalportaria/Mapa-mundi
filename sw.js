@@ -1,7 +1,7 @@
 // Service Worker do Atlas Globo: cache offline do HTML (que já contém a textura Blue Marble),
 // do manifest, dos ícones e dos arquivos do Natural Earth (países 10m e cidades).
 // Ao trocar o index.html ou um arquivo de dados, aumente o número da versão abaixo.
-const V = 'atlas-globo-v8';   // v8: renova o cache (dados antigos eram guardados para sempre) e a página passa a buscar a versão nova primeiro
+const V = 'atlas-globo-v9';   // v9: desempenho (DPR 1,25, modo rápido em gestos, LOD pré-calculado, ladrilhos com atraso). v8: renova o cache e a página busca a versão nova primeiro
 const TC = 'atlas-tiles-v1';          // ladrilhos de satélite já vistos (ficam disponíveis offline)
 const TILE_HOST = 'server.arcgisonline.com', TILE_MAX = 2000;
 let tilePuts = 0;
